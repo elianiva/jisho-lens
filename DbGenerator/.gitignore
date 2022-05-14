@@ -1,0 +1,6 @@
+bin/
+obj/
+
+Data/JMdict_e.gz
+Data/JmdictFurigana.json
+Data/jmdict.db
