@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -25,6 +24,7 @@ public class JmdictSource
     private const string JMdict_ReadingElement = "r_ele";
     private const string JMdict_ReadingContent = "reb";
     private const string JMdict_ReadingPriority = "re_pri";
+    private const string JMdict_ReadingNoKanji = "re_nokanji";
 
     private string _archivePath;
 
@@ -37,27 +37,27 @@ public class JmdictSource
         _archivePath = path;
     }
 
-    private async Task<FileStream> GetFileStreamFromArchive()
+    private async Task<Stream> GetFileStreamFromArchive()
     {
         Console.WriteLine("Getting file stream from archive...");
         using var archiveStream = new FileStream(_archivePath, FileMode.Open, FileAccess.Read);
         using var decompressor = new GZipStream(archiveStream, CompressionMode.Decompress);
-        var fileStream = File.Create(JMDICT_FILENAME);
+        var resultStream = new MemoryStream();
 
         Console.WriteLine("Decompressing archive...");
-        await decompressor.CopyToAsync(fileStream);
-        return fileStream;
+        await decompressor.CopyToAsync(resultStream);
+        // we need to reset the filestream position because the gzip stream
+        // will advance to the end of the file after copying to the file stream
+        if (resultStream.Position > 0)
+        {
+            resultStream.Seek(0, SeekOrigin.Begin);
+        }
+        return resultStream;
     }
 
     public async Task<IEnumerable<JmdictEntry>> GetEntries()
     {
         using var fileStream = await GetFileStreamFromArchive();
-        // we need to reset the filestream position because the gzip stream
-        // will advance to the end of the file after copying to the file stream
-        if (fileStream.Position > 0)
-        {
-            fileStream.Seek(0, SeekOrigin.Begin);
-        }
         var readerSettings = new XmlReaderSettings
         {
             DtdProcessing = DtdProcessing.Parse,
@@ -73,6 +73,8 @@ public class JmdictSource
         Console.WriteLine("Parsing xml...");
         var entries = xdom.Root.Elements(JMdict_Entry).Select((entry, idx) =>
         {
+            var readingElements = entry.Elements(JMdict_ReadingElement);
+#pragma warning disable format
             return new JmdictEntry
             {
                 Id = idx + 1,
@@ -82,7 +84,10 @@ public class JmdictSource
                                          Text: k.Element(JMdict_KanjiContent)?.Value ?? "",
                                          Priorities: (from p in k.Elements(JMdict_KanjiPriority) select p.Value)
                                      )),
-                ReadingElements = (from r in entry.Elements(JMdict_ReadingElement)
+                ReadingElements = (from r in readingElements
+                                   // Exclude the node if it contains the no kanji node, and is not the only reading.
+                                   // This is a behavior that seems to be implemented in Jisho (example word: 台詞).
+                                   where r.Element(JMdict_ReadingNoKanji) is null && readingElements.Count() <= 1
                                    select new JmdictEntry.Reading(
                                        Text: r.Element(JMdict_ReadingContent)?.Value ?? "",
                                        Priorities: (from p in r.Elements(JMdict_ReadingPriority) select p.Value)
@@ -94,6 +99,7 @@ public class JmdictSource
                               CrossReferences: (from xref in s.Elements(JMdict_CrossRefeence) select xref.Value)
                           )),
             };
+#pragma warning restore format
         });
 
         return entries;

@@ -22,9 +22,9 @@ try
     Console.WriteLine("====[ Inserting entries ]====");
     var stopwatch = new Stopwatch();
     stopwatch.Start();
-    inserter.Insert(jmdictEntries, furiganaEntries);
+    var insertedRows = inserter.Insert(jmdictEntries, furiganaEntries);
     stopwatch.Stop();
-    Console.WriteLine($"====[ Inserted roughly {jmdictEntries.Count() + furiganaEntries.Count()} entries in {stopwatch.ElapsedMilliseconds}ms ]====");
+    Console.WriteLine($"====[ Inserted roughly {insertedRows} entries in {stopwatch.ElapsedMilliseconds}ms ]====");
 }
 catch (Exception ex)
 {
