@@ -71,7 +71,9 @@ public class SQLiteInserter
             CREATE TABLE IF NOT EXISTS {JMDICT_READING} (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 ReadingId INTEGER,
+                ReadingOrder INTEGER,
                 Text TEXT,
+                Reading TEXT,
                 Ruby TEXT,
                 Rt TEXT
             );
@@ -228,16 +230,18 @@ public class SQLiteInserter
             {
                 var readingCmd = _connection.CreateCommand();
                 readingCmd.Transaction = furiganaTrx;
-                var readingValuesTemplate = string.Join(",", furiganaEntry.Furigana.Select((_, i) => $"(@readingId{i}, @text{i}, @ruby{i}, @rt{i})"));
+                var readingValuesTemplate = string.Join(",", furiganaEntry.Furigana.Select((_, i) => $"(@readingId{i}, @readingOrder{i}, @text{i}, @reading{i}, @ruby{i}, @rt{i})"));
                 readingCmd.CommandText = $@"
-                INSERT INTO {JMDICT_READING} (ReadingId, Text, Ruby, Rt)
+                INSERT INTO {JMDICT_READING} (ReadingId, ReadingOrder, Text, Reading, Ruby, Rt)
                 VALUES {readingValuesTemplate};
                 ";
                 var readingIdx = 0;
                 foreach (var furigana in furiganaEntry.Furigana)
                 {
                     readingCmd.Parameters.Add(new SqliteParameter("@readingId" + readingIdx, furiganaEntry.Id));
+                    readingCmd.Parameters.Add(new SqliteParameter("@readingOrder" + readingIdx, readingIdx));
                     readingCmd.Parameters.Add(new SqliteParameter("@text" + readingIdx, furiganaEntry.Text));
+                    readingCmd.Parameters.Add(new SqliteParameter("@reading" + readingIdx, furiganaEntry.Reading));
                     readingCmd.Parameters.Add(new SqliteParameter("@ruby" + readingIdx, furigana.Ruby ?? ""));
                     readingCmd.Parameters.Add(new SqliteParameter("@rt" + readingIdx, furigana.Rt ?? ""));
                     readingIdx++;
