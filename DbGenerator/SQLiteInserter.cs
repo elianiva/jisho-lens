@@ -163,28 +163,6 @@ public class SQLiteInserter
                     }
                     #endregion
 
-                    #region ReadingsLegacy
-                    // insert reading elements in bulk
-                    // if (entry.ReadingElements.Count() > 0)
-                    // {
-                    //     var command = _connection.CreateCommand();
-                    //     var readingValuesTemplate = string.Join(",", entry.ReadingElements.Select((_, i) => $"(@entryId{i}, @text{i}, @priorities{i})"));
-                    //     command.CommandText = $@"
-                    //     INSERT INTO {JMDICT_READING} (EntryId, Text, Priorities)
-                    //     VALUES {readingValuesTemplate};
-                    //     ";
-                    //     var readingIdx = 0;
-                    //     foreach (var reading in entry.ReadingElements)
-                    //     {
-                    //         command.Parameters.Add(new SqliteParameter("@entryId" + readingIdx, entry.Id));
-                    //         command.Parameters.Add(new SqliteParameter("@text" + readingIdx, reading.Text));
-                    //         command.Parameters.Add(new SqliteParameter("@priorities" + +readingIdx, string.Join("|", reading.Priorities)));
-                    //         readingIdx++;
-                    //     }
-                    //     command.ExecuteNonQuery();
-                    // }
-                    #endregion
-
                     #region Senses
                     // insert senses in bulk
                     if (entry.Senses.Count() > 0)
