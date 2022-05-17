@@ -14,6 +14,7 @@ public class SQLiteInserter
     private const string JMDICT_READING = "JMdictReading";
     private const string JMDICT_SENSE = "JMdictSense";
     private const string JMDICT_FURIGANA = "JMdictFurigana";
+    private const string JMDICT_FTS_INDEX = "JMdictSenseVT";
 
     private readonly SqliteConnection _connection;
 
@@ -241,6 +242,30 @@ public class SQLiteInserter
             }
         }
         #endregion 
+
+        #region Add FTS index
+        Console.WriteLine("Adding FTS index...");
+        using var ftsIndexTrx = _connection.BeginTransaction(deferred: true);
+        try
+        {
+            var ftsIndexCmd = _connection.CreateCommand();
+            ftsIndexCmd.Transaction = ftsIndexTrx;
+            ftsIndexCmd.CommandText = $@"
+            CREATE VIRTUAL TABLE IF NOT EXISTS {JMDICT_FTS_INDEX} 
+            USING fts4(Glossaries TEXT);
+
+            INSERT INTO {JMDICT_FTS_INDEX} 
+            SELECT Glossaries FROM {JMDICT_SENSE};
+            ";
+            ftsIndexCmd.ExecuteNonQuery();
+            ftsIndexTrx.Commit();
+        }
+        catch (DbException ex)
+        {
+            Console.WriteLine(ex);
+            ftsIndexTrx.Rollback();
+        }
+        #endregion
 
         // make the database file size smaller
         Vacuum();
