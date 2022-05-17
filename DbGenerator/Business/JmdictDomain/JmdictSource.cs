@@ -3,9 +3,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Linq;
+using System.Xml.XPath;
 
 namespace Business.JmdictDomain;
 
@@ -61,14 +64,20 @@ public class JmdictSource
         var readerSettings = new XmlReaderSettings
         {
             DtdProcessing = DtdProcessing.Parse,
-            MaxCharactersFromEntities = long.MaxValue,
-            MaxCharactersInDocument = long.MaxValue,
         };
-        using var xmlReader = XmlReader.Create(fileStream, readerSettings);
+        using var xmlReader = XmlTextReader.Create(fileStream, readerSettings);
 
         Console.WriteLine("Loading xml...");
         var xdom = XDocument.Load(xmlReader);
         if (xdom.Root is null) throw new Exception("Failed to find xml root element.");
+
+        var entities = xdom.DocumentType?.ToString();
+        if (entities is null) throw new Exception("Failed to find xml entities.");
+
+        // this dictionary is used to "unresolve" the expanded entity since the XmlReader
+        // doesn't allow us to do that, apparently
+        Console.WriteLine("Generating entities dictionary...");
+        var posDefinition = ParseEntities(entities);
 
         Console.WriteLine("Parsing xml...");
         var entries = xdom.Root.Elements(JMdict_Entry).Select((entry, idx) =>
@@ -95,7 +104,9 @@ public class JmdictSource
                 Senses = (from s in entry.Elements(JMdict_Sense)
                           select new JmdictEntry.Sense(
                               Glossaries: (from gloss in s.Elements(JMdict_Glossary) select gloss.Value),
-                              PartsOfSpeech: (from pos in s.Elements(JMdict_PartOfSpeech) select pos.Value),
+                              // unresolve the pos entity so we get the shorter version
+                              // we'll resolve them in flutter
+                              PartsOfSpeech: (from pos in s.Elements(JMdict_PartOfSpeech) select posDefinition[pos.Value]),
                               CrossReferences: (from xref in s.Elements(JMdict_CrossRefeence) select xref.Value)
                           )),
             };
@@ -103,5 +114,23 @@ public class JmdictSource
         });
 
         return entries;
+    }
+
+    private Dictionary<string, string> ParseEntities(String dtd)
+    {
+        var entityRE = new Regex(@"<!ENTITY (?<key>.+) ""(?<definition>.+)"">");
+
+        var entities = new Dictionary<string, string>();
+        foreach (var match in dtd
+                                .Split("\n")
+                                .Where(d => d.StartsWith("<!ENTITY"))
+                                .Select(line => entityRE.Match(line)))
+        {
+            var key = match.Groups["key"].Value;
+            var definition = match.Groups["definition"].Value;
+            entities[definition] = key;
+        }
+
+        return entities;
     }
 }

@@ -11,14 +11,14 @@ var inserter = new SQLiteInserter(Path.Join(DATA_PATH, "jmdict.db"));
 var furiganaSource = new FuriganaSource(Path.Join(DATA_PATH, "JmdictFurigana.json"));
 var jmdictSource = new JmdictSource(Path.Join(DATA_PATH, "JMdict_e.gz"));
 
-Console.WriteLine("====[ Getting furigana entries ]====");
-var furiganaEntries = await furiganaSource.GetEntries();
-
-Console.WriteLine("====[ Getting jmdict entries ]====");
-var jmdictEntries = await jmdictSource.GetEntries();
-
 try
 {
+    Console.WriteLine("====[ Getting furigana entries ]====");
+    var furiganaEntries = await furiganaSource.GetEntries();
+
+    Console.WriteLine("====[ Getting jmdict entries ]====");
+    var jmdictEntries = await jmdictSource.GetEntries();
+
     Console.WriteLine("====[ Inserting entries ]====");
     var stopwatch = new Stopwatch();
     stopwatch.Start();

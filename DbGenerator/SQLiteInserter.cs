@@ -122,9 +122,51 @@ public class SQLiteInserter
         _command.CommandText = "PRAGMA synchronous = OFF; PRAGMA journal_mode = MEMORY;";
         _command.ExecuteNonQuery();
 
+        // count inserted entries
+        var insertedRowCount = 0;
+
+        #region Furigana Entries
+        using var furiganaTrx = _connection.BeginTransaction(deferred: true);
+        try
+        {
+            Console.WriteLine("Inserting chunk of {0} furigana entries...", furiganaEntries.Count());
+            foreach (var furiganaEntry in furiganaEntries)
+            {
+                var readingCmd = _connection.CreateCommand();
+                readingCmd.Transaction = furiganaTrx;
+                var readingValuesTemplate = string.Join(",", furiganaEntry.Furigana.Select((_, i) => $"(@readingId{i}, @readingOrder{i}, @text{i}, @reading{i}, @ruby{i}, @rt{i})"));
+                readingCmd.CommandText = $@"
+                INSERT INTO {JMDICT_READING} (ReadingId, ReadingOrder, Text, Reading, Ruby, Rt)
+                VALUES {readingValuesTemplate};
+                ";
+                var readingIdx = 0;
+                foreach (var furigana in furiganaEntry.Furigana)
+                {
+                    readingCmd.Parameters.Add(new SqliteParameter("@readingId" + readingIdx, furiganaEntry.Id));
+                    readingCmd.Parameters.Add(new SqliteParameter("@readingOrder" + readingIdx, readingIdx));
+                    readingCmd.Parameters.Add(new SqliteParameter("@text" + readingIdx, furiganaEntry.Text));
+                    readingCmd.Parameters.Add(new SqliteParameter("@reading" + readingIdx, furiganaEntry.Reading));
+                    readingCmd.Parameters.Add(new SqliteParameter("@ruby" + readingIdx, furigana.Ruby ?? ""));
+                    readingCmd.Parameters.Add(new SqliteParameter("@rt" + readingIdx, furigana.Rt ?? ""));
+                    readingIdx++;
+                    insertedRowCount++;
+                }
+                readingCmd.ExecuteNonQuery();
+                insertedRowCount++;
+            }
+            furiganaTrx.Commit();
+        }
+        catch (DbException ex)
+        {
+            Console.WriteLine(ex);
+            furiganaTrx.Rollback();
+        }
+        #endregion
+
         // insert them in chunks so I can see the progress
-        var rows = 0;
         #region JMdict Entries
+        // track the sense id manually because we don't want to get its id
+        // from the database otherwise it'll be too slow
         foreach (var chunk in jmdictEntries.Chunk(50_000))
         {
             Console.WriteLine("Inserting chunk of {0} JMdict entries...", chunk.Count());
@@ -159,7 +201,7 @@ public class SQLiteInserter
                         kanjiCmd.Parameters.Add(new SqliteParameter("@text", kanji.Text));
                         kanjiCmd.Parameters.Add(new SqliteParameter("@priorities", string.Join(",", kanji.Priorities)));
                         kanjiCmd.ExecuteNonQuery();
-                        rows++;
+                        insertedRowCount++;
                     }
                     #endregion
 
@@ -168,6 +210,7 @@ public class SQLiteInserter
                     if (entry.Senses.Count() > 0)
                     {
                         var command = _connection.CreateCommand();
+                        command.Transaction = jmdictTrx;
                         var sensesValuesTemplate = string.Join(",", entry.Senses.Select((_, i) => $"(@entryId{i}, @glossaries{i}, @partsOfSpeech{i}, @crossReferences{i})"));
                         command.CommandText = $@"
                         INSERT INTO {JMDICT_SENSE} (EntryId, Glossaries, PartsOfSpeech, CrossReferences)
@@ -181,7 +224,7 @@ public class SQLiteInserter
                             command.Parameters.Add(new SqliteParameter("@partsOfSpeech" + senseIdx, string.Join("|", sense.PartsOfSpeech)));
                             command.Parameters.Add(new SqliteParameter("@crossReferences" + senseIdx, string.Join("|", sense.CrossReferences)));
                             senseIdx++;
-                            rows++;
+                            insertedRowCount++;
                         }
                         command.ExecuteNonQuery();
                     }
@@ -199,49 +242,11 @@ public class SQLiteInserter
         }
         #endregion 
 
-        #region Furigana Entries
-        using var furiganaTrx = _connection.BeginTransaction(deferred: true);
-        try
-        {
-            Console.WriteLine("Inserting chunk of {0} furigana entries...", furiganaEntries.Count());
-            foreach (var furiganaEntry in furiganaEntries)
-            {
-                var readingCmd = _connection.CreateCommand();
-                readingCmd.Transaction = furiganaTrx;
-                var readingValuesTemplate = string.Join(",", furiganaEntry.Furigana.Select((_, i) => $"(@readingId{i}, @readingOrder{i}, @text{i}, @reading{i}, @ruby{i}, @rt{i})"));
-                readingCmd.CommandText = $@"
-                INSERT INTO {JMDICT_READING} (ReadingId, ReadingOrder, Text, Reading, Ruby, Rt)
-                VALUES {readingValuesTemplate};
-                ";
-                var readingIdx = 0;
-                foreach (var furigana in furiganaEntry.Furigana)
-                {
-                    readingCmd.Parameters.Add(new SqliteParameter("@readingId" + readingIdx, furiganaEntry.Id));
-                    readingCmd.Parameters.Add(new SqliteParameter("@readingOrder" + readingIdx, readingIdx));
-                    readingCmd.Parameters.Add(new SqliteParameter("@text" + readingIdx, furiganaEntry.Text));
-                    readingCmd.Parameters.Add(new SqliteParameter("@reading" + readingIdx, furiganaEntry.Reading));
-                    readingCmd.Parameters.Add(new SqliteParameter("@ruby" + readingIdx, furigana.Ruby ?? ""));
-                    readingCmd.Parameters.Add(new SqliteParameter("@rt" + readingIdx, furigana.Rt ?? ""));
-                    readingIdx++;
-                    rows++;
-                }
-                readingCmd.ExecuteNonQuery();
-                rows++;
-            }
-            furiganaTrx.Commit();
-        }
-        catch (DbException ex)
-        {
-            Console.WriteLine(ex);
-            furiganaTrx.Rollback();
-        }
-        #endregion
-
         // make the database file size smaller
         Vacuum();
 
         _connection.Close();
 
-        return rows;
+        return insertedRowCount;
     }
 }
