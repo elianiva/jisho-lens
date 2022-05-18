@@ -90,7 +90,7 @@ public class JmdictSource
                 EntrySequence = int.Parse(entry.Element(JMdict_EntrySequence)?.Value ?? "0"),
                 KanjiElements = (from k in entry.Elements(JMdict_KanjiElement)
                                  select new JmdictEntry.Kanji(
-                                         Text: k.Element(JMdict_KanjiContent)?.Value ?? "",
+                                         KanjiText: k.Element(JMdict_KanjiContent)?.Value ?? "",
                                          Priorities: (from p in k.Elements(JMdict_KanjiPriority) select p.Value)
                                      )),
                 ReadingElements = (from r in readingElements
@@ -98,7 +98,7 @@ public class JmdictSource
                                    // This is a behavior that seems to be implemented in Jisho (example word: 台詞).
                                    where r.Element(JMdict_ReadingNoKanji) is null && readingElements.Count() <= 1
                                    select new JmdictEntry.Reading(
-                                       Text: r.Element(JMdict_ReadingContent)?.Value ?? "",
+                                       KanjiText: r.Element(JMdict_ReadingContent)?.Value ?? "",
                                        Priorities: (from p in r.Elements(JMdict_ReadingPriority) select p.Value)
                                    )),
                 Senses = (from s in entry.Elements(JMdict_Sense)

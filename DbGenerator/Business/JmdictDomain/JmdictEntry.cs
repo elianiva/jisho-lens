@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -15,9 +14,9 @@ public class JmdictEntry
     public IEnumerable<Reading> ReadingElements { get; init; } = Enumerable.Empty<Reading>();
     public IEnumerable<Sense> Senses { get; init; } = Enumerable.Empty<Sense>();
 
-    public record Reading(string Text, IEnumerable<string> Priorities);
+    public record Reading(string KanjiText, IEnumerable<string> Priorities);
 
-    public record Kanji(string Text, IEnumerable<string> Priorities);
+    public record Kanji(string KanjiText, IEnumerable<string> Priorities);
 
     public record Sense(IEnumerable<string> Glossaries, IEnumerable<string> PartsOfSpeech, IEnumerable<string> CrossReferences);
 
