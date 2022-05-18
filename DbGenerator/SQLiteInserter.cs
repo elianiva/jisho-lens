@@ -93,17 +93,6 @@ public class SQLiteInserter
         _connection.Close();
     }
 
-    private void Vacuum()
-    {
-        _connection.Open();
-
-        var command = _connection.CreateCommand();
-        command.CommandText = $"VACUUM;";
-        command.ExecuteNonQuery();
-
-        _connection.Close();
-    }
-
     public int Insert(IEnumerable<JmdictEntry> jmdictEntries, IEnumerable<FuriganaEntry> furiganaEntries)
     {
         if (furiganaEntries is null) throw new Exception("Furigana entries are null!");
@@ -268,7 +257,9 @@ public class SQLiteInserter
         #endregion
 
         // make the database file size smaller
-        Vacuum();
+        var vacumCmd = _connection.CreateCommand();
+        vacumCmd.CommandText = $"VACUUM;";
+        vacumCmd.ExecuteNonQuery();
 
         _connection.Close();
 
