@@ -83,40 +83,48 @@ class LensPageState extends ConsumerState<LensPage> {
           backdropEnabled: true,
           parallaxEnabled: true,
           borderRadius: radius,
-          body: InteractiveViewer(
-            transformationController: _interactiveViewController,
-            constrained: false,
-            boundaryMargin: EdgeInsets.symmetric(
-              horizontal: 0,
-              vertical: MediaQuery.of(context).size.height,
-            ),
-            minScale: 0.1,
-            maxScale: 1.0,
-            child: FutureBuilder(
-              future: _loadScannedImage(imagePath ?? ""),
-              builder: (
-                BuildContext context,
-                AsyncSnapshot<ScannedImageData> snapshot,
-              ) {
-                if (!snapshot.hasData) {
-                  return const Text("Loading image...");
-                }
+          body: FutureBuilder(
+            future: _loadScannedImage(imagePath ?? ""),
+            builder: (
+              BuildContext context,
+              AsyncSnapshot<ScannedImageData> snapshot,
+            ) {
+              if (!snapshot.hasData &&
+                  snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-                final image = snapshot.data!.image;
-                final textLines = snapshot.data!.textLines;
+              final image = snapshot.data!.image;
+              final textLines = snapshot.data!.textLines;
 
-                if (textLines == null) {
-                  return const Text("No text found");
-                }
+              if (textLines == null || textLines.isEmpty) {
+                return Center(
+                  child: Text(
+                    "No Japanese text was recognised.\n"
+                    "Try scanning a different image.",
+                    style: Theme.of(context).textTheme.titleMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                );
+              }
 
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (transformed) return;
-                  // scale image to fit the screen on initial load
-                  _scaleToFit(image);
-                  transformed = true;
-                });
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (transformed) return;
+                // scale image to fit the screen on initial load
+                _scaleToFit(image);
+                transformed = true;
+              });
 
-                return Builder(builder: (gestureContext) {
+              return InteractiveViewer(
+                transformationController: _interactiveViewController,
+                constrained: false,
+                boundaryMargin: EdgeInsets.symmetric(
+                  horizontal: 0,
+                  vertical: MediaQuery.of(context).size.height,
+                ),
+                minScale: 0.1,
+                maxScale: 1.0,
+                child: Builder(builder: (gestureContext) {
                   return GestureDetector(
                     onTapDown: (details) =>
                         _selectText(gestureContext, details, textLines),
@@ -136,9 +144,9 @@ class LensPageState extends ConsumerState<LensPage> {
                       ),
                     ),
                   );
-                });
-              },
-            ),
+                }),
+              );
+            },
           ),
           panel: Container(
             decoration: BoxDecoration(
