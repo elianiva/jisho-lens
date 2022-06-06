@@ -1,9 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -24,10 +22,6 @@ import 'package:jisho_lens/themes/light_theme.dart';
 import 'package:share_handler/share_handler.dart';
 
 Future<void> main() async {
-  LicenseRegistry.addLicense(() async* {
-    final license = await rootBundle.loadString('google_fonts/OFL.txt');
-    yield LicenseEntryWithLineBreaks(['google_fonts'], license);
-  });
   GoogleFonts.config.allowRuntimeFetching = false;
 
   // needed for sqlite and maybe other native stuff that I'm not aware of
