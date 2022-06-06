@@ -24,12 +24,15 @@ class ResultCard extends ConsumerWidget {
     required this.furigana,
     required this.senses,
     required this.priorities,
+    // used to notify the keyword used in progress animation
+    required this.currentSearchKeyword,
   });
 
   final String kanji;
   final List<Furigana> furigana;
   final List<Sense> senses;
   final List<String> priorities;
+  final AutoDisposeStateProvider<String> currentSearchKeyword;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -135,6 +138,7 @@ class ResultCard extends ConsumerWidget {
                               final keyword = e
                                   .replaceAll(r"・", " ")
                                   .replaceAll(RegExp(r"\d*"), "");
+                              ref.read(currentSearchKeyword.state).state = keyword;
                               ref
                                   .read(JMDictNotifier.provider.notifier)
                                   .updateResults(

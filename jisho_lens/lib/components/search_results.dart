@@ -4,11 +4,7 @@ import 'package:jisho_lens/components/result_card.dart';
 import 'package:jisho_lens/models/jmdict_result.dart';
 import 'package:jisho_lens/providers/jmdict_provider.dart';
 
-class SearchResults extends StatelessWidget {
-  final JMdictResult? searchResult;
-  final WidgetRef ref;
-  final String searchKeyword;
-
+class SearchResults extends ConsumerWidget {
   const SearchResults({
     super.key,
     required this.searchResult,
@@ -16,8 +12,12 @@ class SearchResults extends StatelessWidget {
     required this.searchKeyword,
   });
 
+  final JMdictResult? searchResult;
+  final WidgetRef ref;
+  final AutoDisposeStateProvider<String> searchKeyword;
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Expanded(
       // Material is used to wrap the Listview so it doesn't overflow
       // see: https://github.com/flutter/flutter/issues/86584
@@ -46,7 +46,7 @@ class SearchResults extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    "Searching for \"$searchKeyword\"...",
+                    "Searching for \"${ref.watch(searchKeyword)}\"...",
                   ),
                 ],
               ),
@@ -68,6 +68,7 @@ class SearchResults extends StatelessWidget {
                 kanji: result.kanji,
                 furigana: result.furigana,
                 senses: result.senses,
+                currentSearchKeyword: searchKeyword,
               );
             },
             itemCount: searchResult?.vocabularies.length ?? 0,

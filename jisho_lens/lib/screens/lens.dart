@@ -233,7 +233,7 @@ class LensPageState extends ConsumerState<LensPage> {
                         line.isNotEmpty
                             ? SearchResults(
                                 searchResult: searchResult,
-                                searchKeyword: word,
+                                searchKeyword: selectedWord,
                                 ref: ref,
                               )
                             : Container()

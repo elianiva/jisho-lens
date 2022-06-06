@@ -13,7 +13,7 @@ class SearchPage extends ConsumerStatefulWidget {
 
 class SearchPageState extends ConsumerState<SearchPage> {
   final _searchController = TextEditingController();
-  final _searchKeyword = StateProvider<String>((ref) => "");
+  final _searchKeyword = StateProvider.autoDispose<String>((ref) => "");
 
   @override
   void dispose() {
@@ -84,7 +84,7 @@ class SearchPageState extends ConsumerState<SearchPage> {
           SearchResults(
             searchResult: searchResult,
             ref: ref,
-            searchKeyword: ref.watch(_searchKeyword),
+            searchKeyword: _searchKeyword,
           ),
         ],
       ),
