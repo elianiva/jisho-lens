@@ -1,8 +1,6 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 
-import 'package:jisho_lens/models/lens_history.dart';
-import 'package:jisho_lens/repository/history_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
@@ -23,7 +21,6 @@ class LensPage extends ConsumerStatefulWidget {
 }
 
 class LensPageState extends ConsumerState<LensPage> {
-  final _historyRepository = HistoryRepository();
   final _wordExtractor = WordExtractor();
   final _panelController = PanelController();
   final _interactiveViewController = TransformationController();
@@ -111,15 +108,6 @@ class LensPageState extends ConsumerState<LensPage> {
                 if (textLines == null) {
                   return const Text("No text found");
                 }
-
-                // only add the history when we successfully load the image
-                // and it has text
-                _historyRepository.addHistory(
-                  History(
-                    createdAt: DateTime.now(),
-                    imagePath: imagePath ?? "",
-                  ),
-                );
 
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   if (transformed) return;

@@ -8,7 +8,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:jisho_lens/components/navigation_bar.dart';
 import 'package:jisho_lens/constants/box_names.dart';
-import 'package:jisho_lens/models/lens_history.dart';
 import 'package:jisho_lens/screens/about.dart';
 import 'package:jisho_lens/screens/home.dart';
 import 'package:jisho_lens/screens/lens.dart';
@@ -35,11 +34,8 @@ Future<void> main() async {
   // open the hive box so we don't have to deal with async stuff later
   await Hive.initFlutter();
 
-  Hive.registerAdapter(HistoryAdapter());
-
   await Hive.openBox<String>(kThemeBox);
   await Hive.openBox(kSettingsBox);
-  await Hive.openBox(kLensHistoryBox);
 
   runApp(const ProviderScope(child: MyApp()));
 }

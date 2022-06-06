@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jisho_lens/providers/db_status_provider.dart';
 import 'package:jisho_lens/providers/search_settings_provider.dart';
 import 'package:jisho_lens/providers/theme_provider.dart';
-import 'package:jisho_lens/repository/history_repository.dart';
 import 'package:jisho_lens/repository/jmdict_repository.dart';
 import 'package:settings_ui/settings_ui.dart';
 
@@ -20,7 +19,6 @@ class SettingsPage extends ConsumerStatefulWidget {
 
 class SettingsPageState extends ConsumerState<SettingsPage> {
   final _jmdictRepository = JMDictRepository();
-  final _historyRepository = HistoryRepository();
 
   @override
   Widget build(BuildContext context) {
@@ -86,21 +84,6 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
               ),
               value: Text(
                 "Remove a dictionary from the app database",
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ),
-            SettingsTile(
-              onPressed: (_) => _clearHistory(),
-              leading: Icon(
-                Icons.clear_all,
-                color: Theme.of(context).textTheme.titleMedium?.color,
-              ),
-              title: Text(
-                "Clear History",
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              value: Text(
-                "Clear the scan history",
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ),
@@ -304,19 +287,5 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
         );
       },
     );
-  }
-
-  void _clearHistory() {
-    _historyRepository.clearHistory();
-    if (!mounted) return;
-    // remove the loading dialog
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(
-        "The history has been cleared.",
-        style: Theme.of(context).textTheme.titleMedium,
-      ),
-      behavior: SnackBarBehavior.floating,
-      backgroundColor: Theme.of(context).dialogBackgroundColor,
-    ));
   }
 }

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:jisho_lens/components/history_list.dart';
 import 'package:jisho_lens/providers/db_status_provider.dart';
 import 'package:jisho_lens/screens/lens.dart';
 import 'package:jisho_lens/providers/ocr_provider.dart';
@@ -93,8 +92,6 @@ class HomePageState extends ConsumerState<HomePage> {
             ],
           ),
         ),
-        const SizedBox(height: 20),
-        HistoryList(),
       ],
     );
   }
