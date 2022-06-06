@@ -261,7 +261,10 @@ class LensPageState extends ConsumerState<LensPage> {
   }
 
   void _selectText(
-      BuildContext context, TapDownDetails details, List<TextLine> textLines) {
+    BuildContext context,
+    TapDownDetails details,
+    List<TextLine> textLines,
+  ) {
     RenderBox box = context.findRenderObject() as RenderBox;
     final local = box.globalToLocal(details.globalPosition);
     final lineIndex =
