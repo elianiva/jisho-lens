@@ -218,6 +218,7 @@ class LensPageState extends ConsumerState<LensPage> {
                           child: Visibility(
                             visible: searchResult != null &&
                                 searchResult.vocabularies.isNotEmpty,
+                            replacement: Container(),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
