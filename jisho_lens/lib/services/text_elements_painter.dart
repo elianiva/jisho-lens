@@ -28,18 +28,19 @@ class TextElementsPainter extends CustomPainter {
         box.bottom + kBoxPadding,
       );
       final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(8));
-      final fill = Paint()
+      final selectedPaint = Paint()
         ..style = PaintingStyle.fill
-        ..color = Colors.white.withOpacity(0.25);
-      final stroke = Paint()
-        ..style = PaintingStyle.stroke
+        ..color = Colors.blue.withOpacity(0.25);
+      final normalPaint = Paint()
+        ..style = PaintingStyle.fill
         ..strokeWidth = 2.0
-        ..color = Colors.white.withOpacity(0.4);
+        ..color = Colors.white.withOpacity(0.5)
+        ..blendMode = BlendMode.overlay;
 
-      canvas.drawRRect(rrect, stroke);
+      canvas.drawRRect(rrect, normalPaint);
 
       if (i == selectedLineIndex) {
-        canvas.drawRRect(rrect, fill);
+        canvas.drawRRect(rrect, selectedPaint);
       }
     }
   }
