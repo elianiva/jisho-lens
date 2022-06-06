@@ -21,12 +21,12 @@ class JMDictNotifier extends StateNotifier<JMdictResult?> {
     required String keyword,
     required bool fuzzy,
   }) async {
-    read(isFetching.state).state = true;
+    read(isFetching.notifier).state = true;
     // always reset before updating the results
     state = null;
     final data = await client.findByKeyword(keyword: keyword, fuzzy: fuzzy);
     state = data;
-    read(isFetching.state).state = false;
+    read(isFetching.notifier).state = false;
   }
 
   void reset() {

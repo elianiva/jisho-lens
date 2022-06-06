@@ -138,7 +138,7 @@ class ResultCard extends ConsumerWidget {
                               final keyword = e
                                   .replaceAll(r"・", " ")
                                   .replaceAll(RegExp(r"\d*"), "");
-                              ref.read(currentSearchKeyword.state).state = keyword;
+                              ref.read(currentSearchKeyword.notifier).state = keyword;
                               ref
                                   .read(JMDictNotifier.provider.notifier)
                                   .updateResults(

@@ -172,7 +172,7 @@ class LensPageState extends ConsumerState<LensPage> {
                                   );
                               return GestureDetector(
                                 onTap: () {
-                                  ref.read(selectedWord.state).state = text;
+                                  ref.read(selectedWord.notifier).state = text;
                                   ref
                                       .read(JMDictNotifier.provider.notifier)
                                       .updateResults(
@@ -260,19 +260,19 @@ class LensPageState extends ConsumerState<LensPage> {
 
     // resets everything when the user clicked outside of any text
     if (lineIndex == -1) {
-      ref.read(selectedLineIndex.state).state = -1;
-      ref.read(selectedLine.state).state = [];
+      ref.read(selectedLineIndex.notifier).state = -1;
+      ref.read(selectedLine.notifier).state = [];
       return;
     }
 
     // reset the search result when the user clicked  on a different line
     ref.read(JMDictNotifier.provider.notifier).reset();
-    ref.read(selectedWord.state).state = "";
+    ref.read(selectedWord.notifier).state = "";
 
     final words = _wordExtractor.splitToWords(textLines[lineIndex].text);
 
-    ref.read(selectedLineIndex.state).state = lineIndex;
-    ref.read(selectedLine.state).state = words;
+    ref.read(selectedLineIndex.notifier).state = lineIndex;
+    ref.read(selectedLine.notifier).state = words;
   }
 
   void _scaleToFit(ui.Image image) {

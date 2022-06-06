@@ -206,7 +206,7 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
     try {
       await _jmdictRepository.importDbFile(result.files.first.path);
       // remove the warning banner on success
-      ref.read(dbStatus.state).state = DbStatus.ready;
+      ref.read(dbStatus.notifier).state = DbStatus.ready;
 
       if (!mounted) return;
       // remove the loading dialog

@@ -114,7 +114,7 @@ class HomePageState extends ConsumerState<HomePage> {
     final image = await ImagePicker().pickImage(source: source);
     if (image == null) return;
 
-    ref.read(selectedImagePath.state).state = image.path;
+    ref.read(selectedImagePath.notifier).state = image.path;
 
     if (mounted) {
       await Navigator.of(context).push(MaterialPageRoute(

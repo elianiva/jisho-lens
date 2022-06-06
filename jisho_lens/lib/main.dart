@@ -119,14 +119,14 @@ class _RootPageState extends ConsumerState<RootPage> {
 
     if (media != null) {
       if (!mounted) return;
-      ref.read(selectedImagePath.state).state = media?.attachments?.first?.path;
+      ref.read(selectedImagePath.notifier).state = media?.attachments?.first?.path;
       navigatorKey.currentState
           ?.push(MaterialPageRoute(builder: (_) => const LensPage()));
     }
 
     handler.sharedMediaStream.listen((SharedMedia media) {
       if (!mounted) return;
-      ref.read(selectedImagePath.state).state = media.attachments?.first?.path;
+      ref.read(selectedImagePath.notifier).state = media.attachments?.first?.path;
       navigatorKey.currentState
           ?.push(MaterialPageRoute(builder: (_) => const LensPage()));
     });
@@ -163,7 +163,7 @@ class _RootPageState extends ConsumerState<RootPage> {
         child: PageView(
           controller: _pageController,
           onPageChanged: (index) {
-            ref.read(activePage.state).state = index;
+            ref.read(activePage.notifier).state = index;
           },
           children: widget.pages,
         ),
