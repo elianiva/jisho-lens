@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:jisho_lens/components/navigation_bar.dart';
 import 'package:jisho_lens/constants/box_names.dart';
@@ -27,6 +28,7 @@ Future<void> main() async {
     final license = await rootBundle.loadString('google_fonts/OFL.txt');
     yield LicenseEntryWithLineBreaks(['google_fonts'], license);
   });
+  GoogleFonts.config.allowRuntimeFetching = false;
 
   // needed for sqlite and maybe other native stuff that I'm not aware of
   WidgetsFlutterBinding.ensureInitialized();
