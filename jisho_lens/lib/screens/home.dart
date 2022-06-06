@@ -15,84 +15,85 @@ class HomePage extends ConsumerStatefulWidget {
 class HomePageState extends ConsumerState<HomePage> {
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          height: MediaQuery.of(context).size.width * 0.5,
-          child: GridView.count(
-            primary: false,
-            padding: const EdgeInsets.all(20),
-            crossAxisCount: 2,
-            crossAxisSpacing: 20,
-            mainAxisSpacing: 20,
-            physics: const NeverScrollableScrollPhysics(),
-            children: [
-              TextButton(
-                style: ButtonStyle(
-                  backgroundColor: MaterialStateProperty.all(
-                    Theme.of(context).colorScheme.primary.withOpacity(0.075),
-                  ),
-                  shape: MaterialStateProperty.all(
-                    RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
-                  ),
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 180,
+            height: 180,
+            child: TextButton(
+              style: ButtonStyle(
+                backgroundColor: MaterialStateProperty.all(
+                  Theme.of(context).colorScheme.primary.withOpacity(0.075),
                 ),
-                onPressed: () => _scanImage(context, ImageSource.gallery),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: <Widget>[
-                      Icon(
-                        Icons.image_outlined,
-                        color: Theme.of(context).textTheme.labelLarge?.color,
-                        size: 32.0,
-                        semanticLabel: "Scan from gallery",
-                      ),
-                      const SizedBox(height: 18),
-                      Text(
-                        "Scan from gallery",
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                    ],
+                shape: MaterialStateProperty.all(
+                  RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
                   ),
                 ),
               ),
-              TextButton(
-                style: ButtonStyle(
-                  backgroundColor: MaterialStateProperty.all(
-                    Theme.of(context).colorScheme.primary.withOpacity(0.075),
-                  ),
-                  shape: MaterialStateProperty.all(
-                    RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
-                  ),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    Icon(
+                      Icons.camera_outlined,
+                      color: Theme.of(context).textTheme.labelLarge?.color,
+                      size: 32.0,
+                      semanticLabel: "Take a picture",
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      "Take a picture",
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ],
                 ),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: <Widget>[
-                      Icon(
-                        Icons.camera_outlined,
-                        color: Theme.of(context).textTheme.labelLarge?.color,
-                        size: 32.0,
-                        semanticLabel: "Take a picture",
-                      ),
-                      const SizedBox(height: 18),
-                      Text(
-                        "Take a picture",
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                    ],
-                  ),
-                ),
-                onPressed: () => _scanImage(context, ImageSource.camera),
-              )
-            ],
+              ),
+              onPressed: () => _scanImage(context, ImageSource.camera),
+            ),
           ),
-        ),
-      ],
+          const SizedBox(height: 16),
+          SizedBox(
+            width: 180,
+            height: 180,
+            child: TextButton(
+              style: ButtonStyle(
+                backgroundColor: MaterialStateProperty.all(
+                  Theme.of(context).colorScheme.primary.withOpacity(0.075),
+                ),
+                shape: MaterialStateProperty.all(
+                  RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+              onPressed: () => _scanImage(context, ImageSource.gallery),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    Icon(
+                      Icons.image_outlined,
+                      color: Theme.of(context).textTheme.labelLarge?.color,
+                      size: 32.0,
+                      semanticLabel: "Scan from gallery",
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      "Scan from gallery",
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
