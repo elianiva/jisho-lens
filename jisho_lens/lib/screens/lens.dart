@@ -112,39 +112,46 @@ class LensPageState extends ConsumerState<LensPage> {
                 if (transformed) return;
                 // scale image to fit the screen on initial load
                 _scaleToFit(image);
-                transformed = true;
+                setState(() {
+                  transformed = true;
+                });
               });
 
-              return InteractiveViewer(
-                transformationController: _interactiveViewController,
-                constrained: false,
-                boundaryMargin: EdgeInsets.symmetric(
-                  horizontal: 0,
-                  vertical: MediaQuery.of(context).size.height,
-                ),
-                minScale: 0.1,
-                maxScale: 1.0,
-                child: Builder(builder: (gestureContext) {
-                  return GestureDetector(
-                    onTapDown: (details) =>
-                        _selectText(gestureContext, details, textLines),
-                    child: FittedBox(
-                      child: SizedBox(
-                        width: image.width.toDouble(),
-                        height: image.height.toDouble(),
-                        child: CustomPaint(
-                          painter: ScannedImagePainter(
-                            image: image,
-                          ),
-                          foregroundPainter: TextElementsPainter(
-                            textLines: textLines,
-                            selectedLineIndex: ref.watch(selectedLineIndex),
+              return Visibility(
+                // only show the image when it's been transformed so we won't get weird glitches
+                visible: transformed,
+                replacement: const Center(child: CircularProgressIndicator()),
+                child: InteractiveViewer(
+                  transformationController: _interactiveViewController,
+                  constrained: false,
+                  boundaryMargin: EdgeInsets.symmetric(
+                    horizontal: 0,
+                    vertical: MediaQuery.of(context).size.height,
+                  ),
+                  minScale: 0.1,
+                  maxScale: 1.0,
+                  child: Builder(builder: (gestureContext) {
+                    return GestureDetector(
+                      onTapDown: (details) =>
+                          _selectText(gestureContext, details, textLines),
+                      child: FittedBox(
+                        child: SizedBox(
+                          width: image.width.toDouble(),
+                          height: image.height.toDouble(),
+                          child: CustomPaint(
+                            painter: ScannedImagePainter(
+                              image: image,
+                            ),
+                            foregroundPainter: TextElementsPainter(
+                              textLines: textLines,
+                              selectedLineIndex: ref.watch(selectedLineIndex),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  );
-                }),
+                    );
+                  }),
+                ),
               );
             },
           ),
