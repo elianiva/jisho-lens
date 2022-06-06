@@ -34,8 +34,8 @@ class TextElementsPainter extends CustomPainter {
       final normalPaint = Paint()
         ..style = PaintingStyle.fill
         ..strokeWidth = 2.0
-        ..color = Colors.white.withOpacity(0.5)
-        ..blendMode = BlendMode.overlay;
+        ..color = Colors.white.withOpacity(0.25)
+        ..blendMode = BlendMode.lighten;
 
       canvas.drawRRect(rrect, normalPaint);
 

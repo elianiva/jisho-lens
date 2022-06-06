@@ -16,7 +16,7 @@ class ScannedImagePainter extends CustomPainter {
     // dim the original image
     final paint = Paint()
       ..colorFilter =
-          ColorFilter.mode(Colors.black.withOpacity(0.25), BlendMode.darken);
+          ColorFilter.mode(Colors.black.withOpacity(0.4), BlendMode.darken);
     canvas.drawImage(image, Offset.zero, paint);
   }
 
