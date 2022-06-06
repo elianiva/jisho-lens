@@ -1,15 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:jisho_lens/components/history_card.dart';
 import 'package:jisho_lens/components/history_list.dart';
-import 'package:jisho_lens/constants/box_names.dart';
 import 'package:jisho_lens/providers/db_status_provider.dart';
-import 'package:jisho_lens/repository/history_repository.dart';
 import 'package:jisho_lens/screens/lens.dart';
 import 'package:jisho_lens/providers/ocr_provider.dart';
-import 'package:intl/intl.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
