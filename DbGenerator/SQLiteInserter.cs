@@ -20,14 +20,19 @@ public class SQLiteInserter
 
     private readonly SqliteConnection _connection;
 
-    public SQLiteInserter(string dbFilePath)
+    /// <summary>
+    /// A class used to insert JMdict entries into a SQLite database.
+    /// A custom sqlite3 binary with ICU support is required.
+    /// </summary>
+    public SQLiteInserter(string dbPath)
     {
-        if (string.IsNullOrEmpty(dbFilePath))
+        if (string.IsNullOrWhiteSpace(dbPath))
         {
-            throw new ArgumentException("Path to the database file can't be empty!", nameof(dbFilePath));
+            throw new ArgumentException("Path to the database or extension file can't be empty!", nameof(dbPath));
         }
 
-        _connection = new SqliteConnection($"Data Source={dbFilePath}");
+        _connection = new SqliteConnection($"Data Source={dbPath}");
+        Console.WriteLine(_connection.ServerVersion);
     }
 
     private void RemoveDatabaseFile()
@@ -84,7 +89,8 @@ public class SQLiteInserter
                 Glossaries,
                 content='{JMDICT_SENSE}'
             );
-            CREATE TRIGGER {JMDICT_SENSE_FTS} AFTER INSERT ON {JMDICT_SENSE}
+            CREATE TRIGGER {JMDICT_SENSE_FTS} 
+            AFTER INSERT ON {JMDICT_SENSE}
             BEGIN
                 INSERT INTO {JMDICT_SENSE_FTS} (rowid, Glossaries)
                 VALUES (new.rowid, new.Glossaries);
@@ -93,9 +99,11 @@ public class SQLiteInserter
             CREATE VIRTUAL TABLE IF NOT EXISTS {JMDICT_READING_FTS}
             USING fts4(
                 Reading,
-                content='{JMDICT_READING}'
+                content='{JMDICT_READING}',
+                tokenize=icu ja_JP
             );
-            CREATE TRIGGER {JMDICT_READING_FTS} AFTER INSERT ON {JMDICT_READING}
+            CREATE TRIGGER {JMDICT_READING_FTS} 
+            AFTER INSERT ON {JMDICT_READING}
             BEGIN
                 INSERT INTO {JMDICT_READING_FTS} (rowid, Reading)
                 VALUES (new.rowid, new.Reading);
@@ -104,9 +112,11 @@ public class SQLiteInserter
             CREATE VIRTUAL TABLE IF NOT EXISTS {JMDICT_KANJI_FTS}
             USING fts4(
                 KanjiText,
-                content='{JMDICT_KANJI}'
+                content='{JMDICT_KANJI}',
+                tokenize=icu ja_JP
             );
-            CREATE TRIGGER {JMDICT_KANJI_FTS} AFTER INSERT ON {JMDICT_KANJI}
+            CREATE TRIGGER {JMDICT_KANJI_FTS} 
+            AFTER INSERT ON {JMDICT_KANJI}
             BEGIN
                 INSERT INTO {JMDICT_KANJI_FTS} (rowid, KanjiText)
                 VALUES (new.rowid, new.KanjiText);

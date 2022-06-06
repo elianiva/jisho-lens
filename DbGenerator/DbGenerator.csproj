@@ -7,7 +7,19 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="6.0.5" />
+    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="6.0.5" />
+    <PackageReference Include="SQLitePCLRaw.core" Version="2.0.7" />
+    <PackageReference Include="SQLitePCLRaw.provider.dynamic_cdecl" Version="2.0.7" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- SQlite has this C# file that we have to exclude -->
+    <Compile Remove="./Data/sqlite/Replace.cs" />
+  </ItemGroup>
+
+  <Target Name="BuildSqlite" Label="Build SQLite with ICU support">
+      <Exec WorkingDirectory="./Data/sqlite" Command="CFLAGS=&quot;-O3 -DSQLITE_ENABLE_ICU&quot; CPPFLAGS=`icu-config --cppflags` LDFLAGS=`icu-config --ldflags` ./configure" />
+      <Exec WorkingDirectory="./Data/sqlite" Command="make clean" />
+      <Exec WorkingDirectory="./Data/sqlite" Command="make" />
+  </Target>
 </Project>
