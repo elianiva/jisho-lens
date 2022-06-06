@@ -98,9 +98,9 @@ class _RootPageState extends ConsumerState<RootPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final dbPath = await SqliteClient.instance.path;
       final dbFileExists = await File(dbPath).exists();
-      if (!dbFileExists) {
+      if (dbFileExists) {
         // show the banner when the database doesn't exist
-        ref.read(dbStatus.notifier).state = DbStatus.empty;
+        ref.read(dbStatus.notifier).state = DbStatus.ready;
       }
     });
 
