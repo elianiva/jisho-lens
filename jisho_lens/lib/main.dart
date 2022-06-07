@@ -94,8 +94,9 @@ class _RootPageState extends ConsumerState<RootPage> {
       final dbPath = await SqliteClient.instance.path;
       final dbFileExists = await File(dbPath).exists();
       if (dbFileExists) {
-        // show the banner when the database doesn't exist
         ref.read(dbStatus.notifier).state = DbStatus.ready;
+      } else {
+        ref.read(dbStatus.notifier).state = DbStatus.empty;
       }
     });
 
@@ -114,14 +115,16 @@ class _RootPageState extends ConsumerState<RootPage> {
 
     if (media != null) {
       if (!mounted) return;
-      ref.read(selectedImagePath.notifier).state = media?.attachments?.first?.path;
+      ref.read(selectedImagePath.notifier).state =
+          media?.attachments?.first?.path;
       navigatorKey.currentState
           ?.push(MaterialPageRoute(builder: (_) => const LensPage()));
     }
 
     handler.sharedMediaStream.listen((SharedMedia media) {
       if (!mounted) return;
-      ref.read(selectedImagePath.notifier).state = media.attachments?.first?.path;
+      ref.read(selectedImagePath.notifier).state =
+          media.attachments?.first?.path;
       navigatorKey.currentState
           ?.push(MaterialPageRoute(builder: (_) => const LensPage()));
     });
