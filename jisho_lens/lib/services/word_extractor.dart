@@ -25,7 +25,7 @@ class WordExtractor {
   Future<void> initMecab() async {
     // no need to initialise mecab if it has already been initialised
     if (hasBeenInitialised) return;
-    await _mecab?.init("assets/ipadic", false);
+    await _mecab?.init("assets/ipadic", true);
   }
 
   Future<RecognizedText?> _scanImage(String path) async {
@@ -63,7 +63,7 @@ class WordExtractor {
   }
 
   List<String> splitToWords(String text) {
-    final mecabResult = _mecab?.parse(text).map((e) => MecabNode(e.surface));
+    final mecabResult = _mecab?.parse(text).cast<TokenNode>();
     if (mecabResult == null) return [];
 
     return mecabResult
@@ -85,11 +85,4 @@ class WordExtractor {
     _mecab?.destroy();
     _textRecognizer?.close();
   }
-}
-
-// since mecab_dart doesn't have any typing and I really don't like `dynamic` stuff
-class MecabNode {
-  final String surface;
-
-  MecabNode(this.surface);
 }
