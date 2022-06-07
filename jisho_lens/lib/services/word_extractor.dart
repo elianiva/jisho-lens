@@ -67,18 +67,16 @@ class WordExtractor {
     if (mecabResult == null) return [];
 
     return mecabResult
-        .where((e) => e.features.isNotEmpty)
-        // the lemmatisation is always the sixth element of the token.features
-        .map((e) => e.features.cast<String>()[6])
-        // mecab's last element is always EOS so we need to remove it because it's not a word
-        // we also want to remove any punctuations, non-japanese words, and make the list distinct
+        // remove non japanese words and the ones that don't have lemma
         .where(
-          (e) =>
-              e != "EOS" &&
-              e != "、" &&
-              e != "。" &&
-              JAPANESE_FULL_RE.hasMatch(e),
+          (e) => e.features.isNotEmpty && JAPANESE_FULL_RE.hasMatch(e.surface),
         )
+        .map((e) {
+          final features = e.features.cast<String>();
+          final lemma = features[6];
+          // if the lemma is empty, use the surface instead
+          return lemma == "*" ? e.surface : lemma;
+        })
         .toSet()
         .toList();
   }
