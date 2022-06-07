@@ -88,10 +88,10 @@ class JMDictRepository {
     WHERE
       (${isSearchingKana ? (fuzzy ? _kanaPredicateFuzzy : _kanaPredicateExact) : _glossariesPredicateFuzzy})
     ORDER BY
-      -- More "priorities" means more frequent usage
-      LENGTH(JmdictKanji.Priorities) DESC,
       -- Show lesser kanji first because it's more likely to be what the user is looking for
-      LENGTH(JMdictKanji.KanjiText) ASC;
+      LENGTH(JMdictKanji.KanjiText) ASC,
+      -- More "priorities" means more frequent usage
+      LENGTH(JmdictKanji.Priorities) DESC;
     ''', isSearchingKana ? [keyword, keyword] : [keyword]);
     stopwatch.stop();
 
