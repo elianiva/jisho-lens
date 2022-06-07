@@ -55,8 +55,8 @@ class SearchResults extends ConsumerWidget {
           child: ListView.separated(
             shrinkWrap: true,
             padding: const EdgeInsets.only(
-                top:
-                    0), // remove the default top padding, not sure why it's there
+              top: 0, // remove the default top padding, not sure why it's there
+            ),
             physics: const BouncingScrollPhysics(),
             separatorBuilder: (context, index) {
               return const SizedBox(height: 16);
