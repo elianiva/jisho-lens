@@ -7,6 +7,7 @@ import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart
 import 'package:jisho_lens/components/search_results.dart';
 import 'package:jisho_lens/models/scanned_image.dart';
 import 'package:jisho_lens/providers/jmdict_provider.dart';
+import 'package:jisho_lens/providers/search_settings_provider.dart';
 import 'package:jisho_lens/services/scanned_image_painter.dart';
 import 'package:jisho_lens/providers/ocr_provider.dart';
 import 'package:jisho_lens/services/text_elements_painter.dart';
@@ -192,7 +193,10 @@ class LensPageState extends ConsumerState<LensPage> {
                                       .read(JMDictNotifier.provider.notifier)
                                       .updateResults(
                                         keyword: text,
-                                        fuzzy: false,
+                                        fuzzy: ref
+                                            .read(
+                                                SearchSettingsNotifier.provider)
+                                            .useFuzzySearch,
                                       );
                                   _panelController.open();
                                 },
