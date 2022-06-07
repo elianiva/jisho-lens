@@ -29,7 +29,6 @@ Future<void> main() async {
 
   // open the hive box so we don't have to deal with async stuff later
   await Hive.initFlutter();
-
   await Hive.openBox<String>(kThemeBox);
   await Hive.openBox(kSettingsBox);
 
