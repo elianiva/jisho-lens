@@ -67,7 +67,9 @@ class WordExtractor {
     if (mecabResult == null) return [];
 
     return mecabResult
-        .map((e) => e.surface)
+        .where((e) => e.features.isNotEmpty)
+        // the lemmatisation is always the sixth element of the token.features
+        .map((e) => e.features.cast<String>()[6])
         // mecab's last element is always EOS so we need to remove it because it's not a word
         // we also want to remove any punctuations, non-japanese words, and make the list distinct
         .where(
