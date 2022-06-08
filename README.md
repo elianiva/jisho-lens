@@ -60,7 +60,7 @@ Please refer to [DbGenerator/README.md](https://github.com/elianiva/jisho-lens/b
 
 ## Usage
 
-You must first import a dictionary to use this app. I made the dictionary separated so that I can update it more frequently without having to reinstall the app everytime. You can grab one from [the release page](#TODO). If you don't import the dictionary, you won't be able to use any of the features and will get a warning like this:
+You must first import a dictionary to use this app. Just go to the settings page and press the `Import Database` menu, you should be able to pick the database file that you can download from [the release page](https://github.com/elianiva/jisho-lens/releases/). I made the dictionary separated so that I can update it more frequently without having to reinstall the app everytime. If you don't import the dictionary, you won't be able to use any of the features and will get a warning like this:
 
 <img src="https://i.ibb.co/jT0fYnK/warning.png" width="600" />
 
