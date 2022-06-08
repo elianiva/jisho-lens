@@ -8,26 +8,8 @@ import 'package:jisho_lens/models/vocab.dart';
 import 'package:jisho_lens/services/sqlite_client.dart';
 
 class JMDictRepository {
-  Future<void> importDbFile(String? sourcePath) async {
-    if (sourcePath == null) {
-      throw const FileSystemException("File path is null");
-    }
-
-    final sourceFile = File(sourcePath);
-    final dbPath = await SqliteClient.instance.path;
-    await sourceFile.copy(dbPath);
-  }
-
-  Future<void> removeDbFile() async {
-    final dbPath = await SqliteClient.instance.path;
-    final dbFile = File(dbPath);
-    final isDbFileExists = await dbFile.exists();
-    if (!isDbFileExists) {
-      throw const FileSystemException("The database file doesn't exist.");
-    }
-
-    await dbFile.delete();
-  }
+  final _nonNumberPattern = RegExp(r'\D+');
+  static final _latinLettersPattern = RegExp(r'[a-zA-Z]');
 
   static const _glossariesPredicateFuzzy = '''
   JMdictSense.Glossaries in (
@@ -51,7 +33,26 @@ class JMDictRepository {
   OR JMdictKanji.KanjiText = ?
   ''';
 
-  static final _latinLettersRE = RegExp(r'[a-zA-Z]');
+  Future<void> importDbFile(String? sourcePath) async {
+    if (sourcePath == null) {
+      throw const FileSystemException("File path is null");
+    }
+
+    final sourceFile = File(sourcePath);
+    final dbPath = await SqliteClient.instance.path;
+    await sourceFile.copy(dbPath);
+  }
+
+  Future<void> removeDbFile() async {
+    final dbPath = await SqliteClient.instance.path;
+    final dbFile = File(dbPath);
+    final isDbFileExists = await dbFile.exists();
+    if (!isDbFileExists) {
+      throw const FileSystemException("The database file doesn't exist.");
+    }
+
+    await dbFile.delete();
+  }
 
   Future<JMdictResult?> findByKeyword({
     required String keyword,
@@ -60,7 +61,7 @@ class JMDictRepository {
     final db = await SqliteClient.instance.db;
     if (db == null) return null;
 
-    final isSearchingKana = _latinLettersRE.hasMatch(keyword) == false;
+    final isSearchingKana = _latinLettersPattern.hasMatch(keyword) == false;
 
     final stopwatch = Stopwatch();
     stopwatch.start();
@@ -89,9 +90,7 @@ class JMDictRepository {
       (${isSearchingKana ? (fuzzy ? _kanaPredicateFuzzy : _kanaPredicateExact) : _glossariesPredicateFuzzy})
     ORDER BY
       -- Show lesser kanji first because it's more likely to be what the user is looking for
-      LENGTH(JMdictKanji.KanjiText) ASC,
-      -- More "priorities" means more frequent usage
-      LENGTH(JmdictKanji.Priorities) DESC;
+      LENGTH(JMdictKanji.KanjiText) ASC;
     ''', isSearchingKana ? [keyword, keyword] : [keyword]);
     stopwatch.stop();
 
@@ -193,6 +192,28 @@ class JMDictRepository {
         priorities: priorities,
       );
     }).toList();
+
+    // can't do this sorting in the database because it's a bit complex
+    // sort by frequency.
+    // e.g ichi1,nf01 will ge higher priority than ichi2,nf07
+    //     ichi2,nf07 will be higher than ichi1
+    results.sort((a, b) {
+      // resolve same length priorities by their ranking
+      if (a.priorities.length == b.priorities.length) {
+        final aScore = a.priorities.fold(0, (prev, p) {
+          return int.parse(p.replaceAll(_nonNumberPattern, ""));
+        });
+        final bScore = b.priorities.fold(0, (prev, p) {
+          return int.parse(p.replaceAll(_nonNumberPattern, ""));
+        });
+        
+        // higher rank will appear first
+        return aScore - bScore;
+      }
+
+      // more priorities label will appear first
+      return b.priorities.length - a.priorities.length;
+    });
 
     return results;
   }
