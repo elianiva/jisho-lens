@@ -1,5 +1,3 @@
-**WARNING: NOT READY YET. IF YOU WANT TO TRY THE APP YOU NEED TO BUILD IT YOURSELF USING THE INSTRUCTIONS.**
-
 <div align="center">
   <picture>
      <source media="(prefers-color-scheme: dark)" srcset="https://i.ibb.co/99dBTBk/readme-logo-dark.png">
