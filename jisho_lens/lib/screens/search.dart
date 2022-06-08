@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jisho_lens/components/search_results.dart';
+import 'package:jisho_lens/components/search_warning.dart';
+import 'package:jisho_lens/constants/kana_patterns.dart';
 import 'package:jisho_lens/providers/jmdict_provider.dart';
 import 'package:jisho_lens/providers/search_settings_provider.dart';
 
@@ -14,6 +16,7 @@ class SearchPage extends ConsumerStatefulWidget {
 class SearchPageState extends ConsumerState<SearchPage> {
   final _searchController = TextEditingController();
   final _searchKeyword = StateProvider.autoDispose<String>((ref) => "");
+  final _kanjiRegex = RegExp(kKanjiPattern);
 
   @override
   void dispose() {
@@ -46,6 +49,16 @@ class SearchPageState extends ConsumerState<SearchPage> {
                     ref.read(JMDictNotifier.provider.notifier);
                 final fuzzy =
                     ref.read(SearchSettingsNotifier.provider).useFuzzySearch;
+
+                if (!_kanjiRegex.hasMatch(keyword) &&
+                    keyword.length <= 1 &&
+                    fuzzy) {
+                  showDialog(
+                    context: context,
+                    builder: (_) => const SearchWarningDialog(),
+                  );
+                  return;
+                }
 
                 _searchController.text = "";
                 await resourceNotifier.updateResults(

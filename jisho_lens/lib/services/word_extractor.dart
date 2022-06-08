@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:mecab_dart/mecab_dart.dart';
+import 'package:jisho_lens/constants/kana_patterns.dart';
 
 class WordExtractor {
   TextRecognizer? _textRecognizer;
@@ -9,9 +10,8 @@ class WordExtractor {
   Mecab? _mecab;
   bool hasBeenInitialised = false;
 
-  // ignore: non_constant_identifier_names
-  final JAPANESE_FULL_RE = RegExp(
-    r"[\u3041-\u3096\u30A0-\u30FF\u3400-\u4DB5\u4E00-\u9FCB\uF900-\uFA6A\u31F0-\u31FF]",
+  final _japaneseFullRegex = RegExp(
+    kHiraganaPattern + kKatakanaPattern + kKanjiPattern + kMiscPattern,
   );
 
   // ignore: non_constant_identifier_names
@@ -42,9 +42,8 @@ class WordExtractor {
 
   Future<List<TextBlock>?> extractAsBlocks(String path) async {
     final result = await _scanImage(path);
-    // see: http://www.localizingjapan.com/blog/2012/01/20/regular-expressions-for-japanese-text/
     return result?.blocks
-        .where((b) => JAPANESE_FULL_RE.hasMatch(b.text.trim()))
+        .where((b) => _japaneseFullRegex.hasMatch(b.text.trim()))
         .toList();
   }
 
@@ -69,7 +68,8 @@ class WordExtractor {
     return mecabResult
         // remove non japanese words and the ones that don't have lemma
         .where(
-          (e) => e.features.isNotEmpty && JAPANESE_FULL_RE.hasMatch(e.surface),
+          (e) =>
+              e.features.isNotEmpty && _japaneseFullRegex.hasMatch(e.surface),
         )
         .map((e) {
           final features = e.features.cast<String>();

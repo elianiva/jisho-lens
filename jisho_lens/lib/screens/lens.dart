@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:jisho_lens/components/search_results.dart';
+import 'package:jisho_lens/components/search_warning.dart';
+import 'package:jisho_lens/constants/kana_patterns.dart';
 import 'package:jisho_lens/models/scanned_image.dart';
 import 'package:jisho_lens/providers/jmdict_provider.dart';
 import 'package:jisho_lens/providers/search_settings_provider.dart';
@@ -25,6 +27,7 @@ class LensPageState extends ConsumerState<LensPage> {
   final _wordExtractor = WordExtractor();
   final _panelController = PanelController();
   final _interactiveViewController = TransformationController();
+  final _kanjiPattern = RegExp(kKanjiPattern);
   // this is a bit of a hack to remember that we've set the initial position
   // of the InteractiveViewer. If we don't do this, the viewer will get transformed
   // everytime it gets rebuilt.
@@ -188,15 +191,27 @@ class LensPageState extends ConsumerState<LensPage> {
                                   );
                               return GestureDetector(
                                 onTap: () {
+                                  final useFuzzySearch = ref
+                                      .read(SearchSettingsNotifier.provider)
+                                      .useFuzzySearch;
+                                      
+                                  if (!_kanjiPattern.hasMatch(text) &&
+                                      text.length <= 1 &&
+                                      useFuzzySearch) {
+                                    showDialog(
+                                      context: context,
+                                      builder: (_) =>
+                                          const SearchWarningDialog(),
+                                    );
+                                    return;
+                                  }
+
                                   ref.read(selectedWord.notifier).state = text;
                                   ref
                                       .read(JMDictNotifier.provider.notifier)
                                       .updateResults(
                                         keyword: text,
-                                        fuzzy: ref
-                                            .read(
-                                                SearchSettingsNotifier.provider)
-                                            .useFuzzySearch,
+                                        fuzzy: useFuzzySearch,
                                       );
                                   _panelController.open();
                                 },
