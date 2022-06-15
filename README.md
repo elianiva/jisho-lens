@@ -1,7 +1,7 @@
 <div align="center">
   <picture>
-     <source media="(prefers-color-scheme: dark)" srcset="https://i.ibb.co/99dBTBk/readme-logo-dark.png">
-     <img alt="logo" src="https://i.ibb.co/Tv3WPxN/readme-logo-light.png">
+     <source width="400" media="(prefers-color-scheme: dark)" srcset="https://i.ibb.co/P1SXZxr/readme-logo-dark.png">
+     <img width="400" alt="logo" src="https://i.ibb.co/3pjfzd1/readme-logo-light.png">
   </picture>
 </div>
 
