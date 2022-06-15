@@ -11,11 +11,9 @@ class WordExtractor {
   bool hasBeenInitialised = false;
 
   final _japaneseFullRegex = RegExp(
-    kHiraganaPattern + kKatakanaPattern + kKanjiPattern + kMiscPattern,
+    // ignore: prefer_interpolation_to_compose_strings
+    "[" + kHiraganaPattern + kKatakanaPattern + kKanjiPattern + kMiscPattern + "]",
   );
-
-  // ignore: non_constant_identifier_names
-  final JAPANESE_SMALL_KANA = RegExp(r"[ぁぃぅぇぉっょァィゥェォッョ]");
 
   WordExtractor() {
     _textRecognizer = TextRecognizer(script: TextRecognitionScript.japanese);

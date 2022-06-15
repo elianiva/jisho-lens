@@ -16,7 +16,7 @@ class SearchPage extends ConsumerStatefulWidget {
 class SearchPageState extends ConsumerState<SearchPage> {
   final _searchController = TextEditingController();
   final _searchKeyword = StateProvider.autoDispose<String>((ref) => "");
-  final _kanjiRegex = RegExp(kKanjiPattern);
+  final _kanjiRegex = RegExp("[$kKanjiPattern]");
 
   @override
   void dispose() {

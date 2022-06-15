@@ -27,7 +27,7 @@ class LensPageState extends ConsumerState<LensPage> {
   final _wordExtractor = WordExtractor();
   final _panelController = PanelController();
   final _interactiveViewController = TransformationController();
-  final _kanjiPattern = RegExp(kKanjiPattern);
+  final _kanjiPattern = RegExp("[$kKanjiPattern]");
   // this is a bit of a hack to remember that we've set the initial position
   // of the InteractiveViewer. If we don't do this, the viewer will get transformed
   // everytime it gets rebuilt.
@@ -99,7 +99,7 @@ class LensPageState extends ConsumerState<LensPage> {
               }
 
               final image = snapshot.data!.image;
-              final textLines = snapshot.data!.textLines;
+              final textLines = snapshot.data!.textLines!;
 
               if (textLines == null || textLines.isEmpty) {
                 return Center(
