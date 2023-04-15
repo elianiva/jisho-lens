@@ -1,3 +1,3 @@
-namespace Business.FuriganaDomain;
+namespace DbGenerator.Business.FuriganaDomain;
 
-public record Furigana(string? Ruby, string? Rt);
+public sealed record Furigana(string? Ruby, string? Rt);

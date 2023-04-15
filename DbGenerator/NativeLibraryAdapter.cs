@@ -2,9 +2,11 @@ using System;
 using System.Runtime.InteropServices;
 using SQLitePCL;
 
-class NativeLibraryAdapter : IGetFunctionPointer
+namespace DbGenerator;
+
+internal class NativeLibraryAdapter : IGetFunctionPointer
 {
-    readonly IntPtr _library;
+    private readonly IntPtr _library;
 
     public NativeLibraryAdapter(string name)
         => _library = NativeLibrary.Load(name);

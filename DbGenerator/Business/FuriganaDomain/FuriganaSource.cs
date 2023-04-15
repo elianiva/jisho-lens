@@ -7,26 +7,22 @@ using System.Text.Json;
 using System.Text.Unicode;
 using System.Threading.Tasks;
 
-namespace Business.FuriganaDomain;
+namespace DbGenerator.Business.FuriganaDomain;
 
-public class FuriganaSource
+public sealed class FuriganaSource
 {
-    private string _jsonPath;
+    private readonly string _jsonPath;
 
     public FuriganaSource(string path)
     {
-        if (string.IsNullOrEmpty(path))
-        {
-            throw new ArgumentException("Path to the furigana file can't be empty!", nameof(path));
-        }
-
+        if (string.IsNullOrEmpty(path)) throw new ArgumentNullException(nameof(path));
         _jsonPath = path;
     }
 
     public async Task<IEnumerable<FuriganaEntry>> GetEntries()
     {
         Console.WriteLine("Getting entries from json...");
-        using var fileStream = new FileStream(_jsonPath, FileMode.Open, FileAccess.Read);
+        await using var fileStream = new FileStream(_jsonPath, FileMode.Open, FileAccess.Read);
         var serializerOptions = new JsonSerializerOptions
         {
             Encoder = JavaScriptEncoder.Create(UnicodeRanges.All),

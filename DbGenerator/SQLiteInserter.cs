@@ -3,20 +3,19 @@ using System.Collections.Generic;
 using System.Data.Common;
 using System.IO;
 using System.Linq;
-using Business.FuriganaDomain;
-using Business.JmdictDomain;
+using DbGenerator.Business.FuriganaDomain;
+using DbGenerator.Business.JmdictDomain;
 using Microsoft.Data.Sqlite;
 
 public class SQLiteInserter
 {
-    private const string JMDICT_ENTRY = "JMdictEntry";
-    private const string JMDICT_KANJI = "JMdictKanji";
-    private const string JMDICT_READING = "JMdictReading";
-    private const string JMDICT_SENSE = "JMdictSense";
-    private const string JMDICT_FURIGANA = "JMdictFurigana";
-    private const string JMDICT_SENSE_FTS = "JMdictSenseFTS";
-    private const string JMDICT_READING_FTS = "JMdictReadingFTS";
-    private const string JMDICT_KANJI_FTS = "JMdictKanjiFTS";
+    private const string JmdictEntry = "JMdictEntry";
+    private const string JmdictKanji = "JMdictKanji";
+    private const string JmdictReading = "JMdictReading";
+    private const string JmdictSense = "JMdictSense";
+    private const string JmdictSenseFts = "JMdictSenseFTS";
+    private const string JmdictReadingFts = "JMdictReadingFTS";
+    private const string JmdictKanjiFts = "JMdictKanjiFTS";
 
     private readonly SqliteConnection _connection;
 
@@ -52,29 +51,29 @@ public class SQLiteInserter
             var command = _connection.CreateCommand();
             command.Transaction = transaction;
             command.CommandText = $@"
-            CREATE TABLE IF NOT EXISTS {JMDICT_ENTRY} (
+            CREATE TABLE IF NOT EXISTS {JmdictEntry} (
                 Id INTEGER PRIMARY KEY,
                 EntrySequence INTEGER
             );
 
-            CREATE TABLE IF NOT EXISTS {JMDICT_KANJI} (
+            CREATE TABLE IF NOT EXISTS {JmdictKanji} (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 EntryId INTEGER,
                 KanjiText TEXT,
                 Priorities TEXT,
-                FOREIGN KEY (EntryId) REFERENCES {JMDICT_ENTRY}(Id) DEFERRABLE INITIALLY DEFERRED
+                FOREIGN KEY (EntryId) REFERENCES {JmdictEntry}(Id) DEFERRABLE INITIALLY DEFERRED
             );
 
-            CREATE TABLE IF NOT EXISTS {JMDICT_SENSE} (
+            CREATE TABLE IF NOT EXISTS {JmdictSense} (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 EntryId INTEGER,
                 Glossaries TEXT,
                 PartsOfSpeech TEXT,
                 CrossReferences TEXT,
-                FOREIGN KEY (EntryId) REFERENCES {JMDICT_ENTRY}(Id) DEFERRABLE INITIALLY DEFERRED
+                FOREIGN KEY (EntryId) REFERENCES {JmdictEntry}(Id) DEFERRABLE INITIALLY DEFERRED
             );
 
-            CREATE TABLE IF NOT EXISTS {JMDICT_READING} (
+            CREATE TABLE IF NOT EXISTS {JmdictReading} (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 ReadingId INTEGER,
                 ReadingOrder INTEGER,
@@ -84,41 +83,41 @@ public class SQLiteInserter
                 Rt TEXT
             );
 
-            CREATE VIRTUAL TABLE IF NOT EXISTS {JMDICT_SENSE_FTS}
+            CREATE VIRTUAL TABLE IF NOT EXISTS {JmdictSenseFts}
             USING fts4(
                 Glossaries,
-                content='{JMDICT_SENSE}'
+                content='{JmdictSense}'
             );
-            CREATE TRIGGER {JMDICT_SENSE_FTS} 
-            AFTER INSERT ON {JMDICT_SENSE}
+            CREATE TRIGGER {JmdictSenseFts} 
+            AFTER INSERT ON {JmdictSense}
             BEGIN
-                INSERT INTO {JMDICT_SENSE_FTS} (rowid, Glossaries)
+                INSERT INTO {JmdictSenseFts} (rowid, Glossaries)
                 VALUES (new.rowid, new.Glossaries);
             END;
 
-            CREATE VIRTUAL TABLE IF NOT EXISTS {JMDICT_READING_FTS}
+            CREATE VIRTUAL TABLE IF NOT EXISTS {JmdictReadingFts}
             USING fts4(
                 Reading,
-                content='{JMDICT_READING}',
+                content='{JmdictReading}',
                 tokenize=icu ja_JP
             );
-            CREATE TRIGGER {JMDICT_READING_FTS} 
-            AFTER INSERT ON {JMDICT_READING}
+            CREATE TRIGGER {JmdictReadingFts} 
+            AFTER INSERT ON {JmdictReading}
             BEGIN
-                INSERT INTO {JMDICT_READING_FTS} (rowid, Reading)
+                INSERT INTO {JmdictReadingFts} (rowid, Reading)
                 VALUES (new.rowid, new.Reading);
             END;
 
-            CREATE VIRTUAL TABLE IF NOT EXISTS {JMDICT_KANJI_FTS}
+            CREATE VIRTUAL TABLE IF NOT EXISTS {JmdictKanjiFts}
             USING fts4(
                 KanjiText,
-                content='{JMDICT_KANJI}',
+                content='{JmdictKanji}',
                 tokenize=icu ja_JP
             );
-            CREATE TRIGGER {JMDICT_KANJI_FTS} 
-            AFTER INSERT ON {JMDICT_KANJI}
+            CREATE TRIGGER {JmdictKanjiFts} 
+            AFTER INSERT ON {JmdictKanji}
             BEGIN
-                INSERT INTO {JMDICT_KANJI_FTS} (rowid, KanjiText)
+                INSERT INTO {JmdictKanjiFts} (rowid, KanjiText)
                 VALUES (new.rowid, new.KanjiText);
             END;
             ";
@@ -131,7 +130,7 @@ public class SQLiteInserter
         {
             Console.WriteLine("Failed to create tables. Reason: {0}", ex.Message);
             transaction.Rollback();
-            System.Environment.Exit(1);
+            Environment.Exit(1);
         }
     }
 
@@ -173,9 +172,9 @@ public class SQLiteInserter
         PrepareTables();
 
         // turn off synchronous mode and set journal_mode to memory to speed up inserts
-        var _command = _connection.CreateCommand();
-        _command.CommandText = "PRAGMA synchronous = OFF; PRAGMA journal_mode = MEMORY;";
-        _command.ExecuteNonQuery();
+        var sqliteCommand = _connection.CreateCommand();
+        sqliteCommand.CommandText = "PRAGMA synchronous = OFF; PRAGMA journal_mode = MEMORY;";
+        sqliteCommand.ExecuteNonQuery();
 
         Console.WriteLine("Inserting entries...");
         // count inserted entries
@@ -185,14 +184,15 @@ public class SQLiteInserter
         using var furiganaTrx = _connection.BeginTransaction(deferred: true);
         try
         {
-            Console.WriteLine("Inserting chunk of {0} furigana entries...", furiganaEntries.Count());
-            foreach (var furiganaEntry in furiganaEntries)
+            var entries = furiganaEntries.ToList();
+            Console.WriteLine("Inserting chunk of {0} furigana entries...", entries.Count());
+            foreach (var furiganaEntry in entries)
             {
                 var readingCmd = _connection.CreateCommand();
                 readingCmd.Transaction = furiganaTrx;
                 var readingValuesTemplate = string.Join(",", furiganaEntry.Furigana.Select((_, i) => $"(@readingId{i}, @readingOrder{i}, @kanjiText{i}, @reading{i}, @ruby{i}, @rt{i})"));
                 readingCmd.CommandText = $@"
-                INSERT INTO {JMDICT_READING} (ReadingId, ReadingOrder, KanjiText, Reading, Ruby, Rt)
+                INSERT INTO {JmdictReading} (ReadingId, ReadingOrder, KanjiText, Reading, Ruby, Rt)
                 VALUES {readingValuesTemplate};
                 ";
                 var readingIdx = 0;
@@ -233,7 +233,7 @@ public class SQLiteInserter
                 {
                     var jmdictEntryCmd = _connection.CreateCommand();
                     jmdictEntryCmd.CommandText = $@"
-                    INSERT INTO {JMDICT_ENTRY} (Id, EntrySequence)
+                    INSERT INTO {JmdictEntry} (Id, EntrySequence)
                     VALUES (@id, @entrySequence);
                     ";
                     jmdictEntryCmd.Transaction = jmdictTrx;
@@ -246,7 +246,7 @@ public class SQLiteInserter
                     // insert kanji and reading elements in bulk
                     var kanjiCmd = _connection.CreateCommand();
                     kanjiCmd.CommandText = $@"
-                    INSERT INTO {JMDICT_KANJI} (EntryId, KanjiText, Priorities)
+                    INSERT INTO {JmdictKanji} (EntryId, KanjiText, Priorities)
                     VALUES (@entryId, @kanjiText, @priorities);
                     ";
                     kanjiCmd.Transaction = jmdictTrx;
@@ -269,7 +269,7 @@ public class SQLiteInserter
                         command.Transaction = jmdictTrx;
                         var sensesValuesTemplate = string.Join(",", entry.Senses.Select((_, i) => $"(@entryId{i}, @glossaries{i}, @partsOfSpeech{i}, @crossReferences{i})"));
                         command.CommandText = $@"
-                        INSERT INTO {JMDICT_SENSE} (EntryId, Glossaries, PartsOfSpeech, CrossReferences)
+                        INSERT INTO {JmdictSense} (EntryId, Glossaries, PartsOfSpeech, CrossReferences)
                         VALUES {sensesValuesTemplate};
                         ";
                         var senseIdx = 0;
@@ -326,9 +326,9 @@ public class SQLiteInserter
         AddTableIndex();
 
         // make the database file size smaller
-        var vacumCmd = _connection.CreateCommand();
-        vacumCmd.CommandText = $"VACUUM;";
-        vacumCmd.ExecuteNonQuery();
+        var vacuumCmd = _connection.CreateCommand();
+        vacuumCmd.CommandText = $"VACUUM;";
+        vacuumCmd.ExecuteNonQuery();
 
         _connection.Close();
 

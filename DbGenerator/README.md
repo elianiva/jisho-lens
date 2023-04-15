@@ -5,7 +5,7 @@ This folder contains a C# project to parse JMdict and Furigana entries and inser
 There are some prerequisites to run this project:
 
 - [Dotnet SDK](https://dotnet.microsoft.com/download/dotnet-sdk)
-- The [JMdict](http://ftp.edrdg.org/pub/Nihongo//JMdict_e.gz) and [Furigana](ftp://ftp.edrdg.org/pub/Nihongo//JMdict_e.gz) file and put them inside the `./Data` directory.
+- The [JMdict](http://ftp.edrdg.org/pub/Nihongo/JMdict_e.gz) and [Furigana](https://github.com/Doublevil/JmdictFurigana/releases/download/2.3.0%2B2023-03-25/JmdictFurigana.json) file and put them inside the `./Data` directory.
 - A custom compiled sqlite3 with ICU statically linked. You can download it from [here](https://sqlite.org/download.html) and extract it to a directory called `./Data/sqlite`.
 
 To compile the sqlite3 with ICU support, you can use the following command:

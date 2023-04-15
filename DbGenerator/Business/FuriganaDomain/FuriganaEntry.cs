@@ -4,9 +4,9 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Unicode;
 
-namespace Business.FuriganaDomain;
+namespace DbGenerator.Business.FuriganaDomain;
 
-public record FuriganaEntry(
+public sealed record FuriganaEntry(
     int Id,
     string? Reading,
     List<Furigana> Furigana

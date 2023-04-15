@@ -1,19 +1,20 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
-using Business.FuriganaDomain;
-using Business.JmdictDomain;
+using DbGenerator;
+using DbGenerator.Business.FuriganaDomain;
+using DbGenerator.Business.JmdictDomain;
 using SQLitePCL;
 
-string DATA_PATH = Path.Join(Directory.GetCurrentDirectory(), "Data");
+var dataPath = Path.Join(Directory.GetCurrentDirectory(), "Data");
 
 // use a custom sqlite with icu support
-SQLite3Provider_dynamic_cdecl.Setup("sqlite3", new NativeLibraryAdapter(Path.Join(DATA_PATH, "sqlite/.libs/libsqlite3.so")));
+SQLite3Provider_dynamic_cdecl.Setup("sqlite3", new NativeLibraryAdapter(Path.Join(dataPath, "sqlite/.libs/libsqlite3.so")));
 SQLitePCL.raw.SetProvider(new SQLite3Provider_dynamic_cdecl());
 
-var furiganaSource = new FuriganaSource(Path.Join(DATA_PATH, "JmdictFurigana.json"));
-var jmdictSource = new JmdictSource(Path.Join(DATA_PATH, "JMdict_e.gz"));
-var inserter = new SQLiteInserter(Path.Join(DATA_PATH, "jmdict.db"));
+var furiganaSource = new FuriganaSource(Path.Join(dataPath, "JmdictFurigana.json"));
+var jmdictSource = new JmdictSource(Path.Join(dataPath, "JMdict_e.gz"));
+var inserter = new SQLiteInserter(Path.Join(dataPath, "jmdict.db"));
 
 try
 {

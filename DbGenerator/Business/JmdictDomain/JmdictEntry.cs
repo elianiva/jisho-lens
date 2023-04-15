@@ -4,22 +4,26 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Unicode;
 
-namespace Business.JmdictDomain;
+namespace DbGenerator.Business.JmdictDomain;
 
-public class JmdictEntry
+public sealed record Reading(string KanjiText, IEnumerable<string> Priorities);
+
+public sealed record Kanji(string KanjiText, IEnumerable<string> Priorities);
+
+public sealed record Sense(
+    IEnumerable<string> Glossaries,
+    IEnumerable<string> PartsOfSpeech,
+    IEnumerable<string> CrossReferences
+);
+
+public sealed record JmdictEntry(
+    int Id,
+    int EntrySequence,
+    IEnumerable<Kanji> KanjiElements,
+    IEnumerable<Reading> ReadingElements,
+    IEnumerable<Sense> Senses
+)
 {
-    public int Id { get; init; }
-    public int EntrySequence { get; init; }
-    public IEnumerable<Kanji> KanjiElements { get; init; } = Enumerable.Empty<Kanji>();
-    public IEnumerable<Reading> ReadingElements { get; init; } = Enumerable.Empty<Reading>();
-    public IEnumerable<Sense> Senses { get; init; } = Enumerable.Empty<Sense>();
-
-    public record Reading(string KanjiText, IEnumerable<string> Priorities);
-
-    public record Kanji(string KanjiText, IEnumerable<string> Priorities);
-
-    public record Sense(IEnumerable<string> Glossaries, IEnumerable<string> PartsOfSpeech, IEnumerable<string> CrossReferences);
-
 #if DEBUG
     public override string ToString()
     {
