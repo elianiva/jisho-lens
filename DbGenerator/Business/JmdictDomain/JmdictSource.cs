@@ -83,27 +83,27 @@ public class JmdictSource
             (
                 Id: index + 1,
                 EntrySequence: int.Parse(entry.Element(JmdictEntrySequence)?.Value ?? "0"),
-                KanjiElements: (from k in entry.Elements(JmdictKanjiElement)
-                    select new Kanji(
-                        KanjiText: k.Element(JmdictKanjiContent)?.Value ?? "",
-                        Priorities: (k.Elements(JmdictKanjiPriority).Select(p => p.Value))
-                    )),
-                ReadingElements: (from r in readingElements
-                    // Exclude the node if it contains the no kanji node, and is not the only reading.
-                    // This is a behavior that seems to be implemented in Jisho (example word: 台詞).
-                    where r.Element(JmdictReadingNoKanji) is null && readingElements.Count() <= 1
-                    select new Reading(
-                        KanjiText: r.Element(JmdictReadingContent)?.Value ?? "",
-                        Priorities: (r.Elements(JmdictReadingPriority).Select(p => p.Value))
-                    )),
-                Senses: (from s in entry.Elements(JmdictSense)
-                    select new Sense(
-                        Glossaries: (from gloss in s.Elements(JmdictGlossary) select gloss.Value),
-                        // un-resolve the pos entity so we get the shorter version
-                        // we'll resolve them in flutter
-                        PartsOfSpeech: s.Elements(JmdictPartOfSpeech).Select(pos => posDefinition[pos.Value]),
-                        CrossReferences: (s.Elements(JmdictCrossReference).Select(xref => xref.Value))
-                    ))
+                KanjiElements: from k in entry.Elements(JmdictKanjiElement)
+                               select new Kanji(
+                                   KanjiText: k.Element(JmdictKanjiContent)?.Value ?? "",
+                                   Priorities: (k.Elements(JmdictKanjiPriority).Select(p => p.Value))
+                               ),
+                ReadingElements: from r in readingElements
+                                     // Exclude the node if it contains the no kanji node, and is not the only reading.
+                                     // This is a behavior that seems to be implemented in Jisho (example word: 台詞).
+                                 where r.Element(JmdictReadingNoKanji) is null && readingElements.Count() <= 1
+                                 select new Reading(
+                                     KanjiText: r.Element(JmdictReadingContent)?.Value ?? "",
+                                     Priorities: (r.Elements(JmdictReadingPriority).Select(p => p.Value))
+                                 ),
+                Senses: from s in entry.Elements(JmdictSense)
+                        select new Sense(
+                            Glossaries: from gloss in s.Elements(JmdictGlossary) select gloss.Value,
+                            // un-resolve the pos entity so we get the shorter version
+                            // we'll resolve them in flutter
+                            PartsOfSpeech: s.Elements(JmdictPartOfSpeech).Select(pos => posDefinition[pos.Value]),
+                            CrossReferences: (s.Elements(JmdictCrossReference).Select(xref => xref.Value))
+                        )
             );
         });
 
