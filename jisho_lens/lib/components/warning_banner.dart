@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jisho_lens/extensions/context_extensions.dart';
 
 class WarningBanner extends StatelessWidget {
   const WarningBanner({super.key});
@@ -6,7 +7,7 @@ class WarningBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Theme.of(context).errorColor,
+      color: context.theme.colorScheme.error,
       child: const Padding(
         padding: EdgeInsets.all(8.0),
         child: Text(

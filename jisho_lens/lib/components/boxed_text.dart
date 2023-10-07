@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jisho_lens/extensions/radius_extensions.dart';
 
 class BoxedText extends StatelessWidget {
   const BoxedText({
@@ -28,7 +29,7 @@ class BoxedText extends StatelessWidget {
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
             color: backgroundColor,
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: 4.circular,
           ),
           child: Center(child: Text(text, style: textStyle)),
         ),

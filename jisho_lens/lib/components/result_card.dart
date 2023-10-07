@@ -4,6 +4,8 @@ import 'package:jisho_lens/components/boxed_text.dart';
 import 'package:jisho_lens/components/bulleted_list.dart';
 import 'package:jisho_lens/constants/pos_definition.dart';
 import 'package:jisho_lens/constants/priorities.dart';
+import 'package:jisho_lens/extensions/context_extensions.dart';
+import 'package:jisho_lens/extensions/sizedbox_extensions.dart';
 import 'package:jisho_lens/models/furigana.dart';
 import 'package:jisho_lens/models/sense.dart';
 import 'package:jisho_lens/providers/jmdict_provider.dart';
@@ -40,35 +42,28 @@ class ResultCard extends ConsumerWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
-        color: Theme.of(context).colorScheme.primary.withOpacity(0.05),
+        color: context.theme.colorScheme.primary.withOpacity(0.05),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
-            children: priorities.isNotEmpty
-                ? priorities
-                    .map((p) {
-                      return [
-                        BoxedText(
-                          text: p,
-                          tooltipText: PRIORITIES_MAPPING[p] ?? p,
-                          backgroundColor: Theme.of(context)
-                              .colorScheme
-                              .secondary
-                              .withOpacity(0.25),
-                          textStyle:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    fontSize: 10,
-                                  ),
+            children: priorities
+                .map((p) => [
+                      BoxedText(
+                        text: p,
+                        tooltipText: PRIORITIES_MAPPING[p] ?? p,
+                        backgroundColor: context.theme.colorScheme.secondary
+                            .withOpacity(0.25),
+                        textStyle: context.theme.textTheme.bodySmall?.copyWith(
+                          fontSize: 10,
                         ),
-                        const SizedBox(width: 8)
-                      ];
-                    })
-                    .expand((e) => e)
-                    .toList()
-                : [],
+                      ),
+                      8.horizontalBox,
+                    ])
+                .expand((e) => e)
+                .toList(),
           ),
           const SizedBox(height: 8),
           Row(
@@ -81,10 +76,10 @@ class ResultCard extends ConsumerWidget {
                       (e) => RubyTextData(
                         e.ruby,
                         ruby: e.rt,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontSize: 24,
-                            ),
-                        rubyStyle: Theme.of(context).textTheme.bodySmall,
+                        style: context.theme.textTheme.titleLarge?.copyWith(
+                          fontSize: 24,
+                        ),
+                        rubyStyle: context.theme.textTheme.bodySmall,
                       ),
                     )
                     .toList(),
@@ -102,35 +97,29 @@ class ResultCard extends ConsumerWidget {
                             BoxedText(
                               text: e,
                               tooltipText: POS_DEFINITION_MAPPING[e] ?? e,
-                              backgroundColor: Theme.of(context)
-                                  .colorScheme
-                                  .primary
+                              backgroundColor: context.theme.colorScheme.primary
                                   .withOpacity(0.25),
-                              textStyle: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(
-                                    fontSize: 10,
-                                  ),
+                              textStyle:
+                                  context.theme.textTheme.bodySmall?.copyWith(
+                                fontSize: 10,
+                              ),
                             ),
-                            const SizedBox(width: 8)
+                            8.horizontalBox,
                           ];
                         })
                         .expand((e) => e)
                         .toList(),
                   ),
-                  BulletedList(
-                    items: e.glossaries,
-                  ),
+                  BulletedList(items: e.glossaries),
                   Visibility(
                     visible: e.crossReferences.isNotEmpty,
                     child: Row(
                       children: [
                         Text(
                           "see: ",
-                          style: Theme.of(context).textTheme.bodySmall,
+                          style: context.theme.textTheme.bodySmall,
                         ),
-                        const SizedBox(width: 4),
+                        4.horizontalBox,
                         ...e.crossReferences.map((e) {
                           return GestureDetector(
                             onTap: () {
@@ -138,23 +127,21 @@ class ResultCard extends ConsumerWidget {
                               final keyword = e
                                   .replaceAll(r"・", " ")
                                   .replaceAll(RegExp(r"\d*"), "");
-                              ref.read(currentSearchKeyword.notifier).state = keyword;
+                              ref.read(currentSearchKeyword.notifier).state =
+                                  keyword;
                               ref
-                                  .read(JMDictNotifier.provider.notifier)
+                                  .read(jMDictNotifierProvider.notifier)
                                   .updateResults(
                                     keyword: keyword,
                                     fuzzy: false,
                                   );
                             },
                             child: Text(e,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(
-                                      decoration: TextDecoration.underline,
-                                      decorationStyle:
-                                          TextDecorationStyle.dashed,
-                                    )),
+                                style:
+                                    context.theme.textTheme.bodySmall?.copyWith(
+                                  decoration: TextDecoration.underline,
+                                  decorationStyle: TextDecorationStyle.dashed,
+                                )),
                           );
                         }).toList(),
                       ],

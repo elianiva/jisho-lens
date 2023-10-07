@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jisho_lens/components/search_results.dart';
 import 'package:jisho_lens/components/search_warning.dart';
 import 'package:jisho_lens/constants/kana_patterns.dart';
+import 'package:jisho_lens/extensions/context_extensions.dart';
 import 'package:jisho_lens/providers/jmdict_provider.dart';
 import 'package:jisho_lens/providers/search_settings_provider.dart';
 
@@ -26,7 +27,7 @@ class SearchPageState extends ConsumerState<SearchPage> {
 
   @override
   Widget build(BuildContext context) {
-    final searchResult = ref.watch(JMDictNotifier.provider);
+    final searchResult = ref.watch(jMDictNotifierProvider);
 
     return Padding(
       padding: const EdgeInsets.all(24),
@@ -35,7 +36,7 @@ class SearchPageState extends ConsumerState<SearchPage> {
           Container(
             decoration: BoxDecoration(
               borderRadius: const BorderRadius.all(Radius.circular(32)),
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.075),
+              color: context.theme.colorScheme.primary.withOpacity(0.075),
             ),
             child: TextField(
               controller: _searchController,
@@ -46,9 +47,9 @@ class SearchPageState extends ConsumerState<SearchPage> {
                 ref.read(_searchKeyword.notifier).state = keyword;
 
                 final resourceNotifier =
-                    ref.read(JMDictNotifier.provider.notifier);
+                    ref.read(jMDictNotifierProvider.notifier);
                 final fuzzy =
-                    ref.read(SearchSettingsNotifier.provider).useFuzzySearch;
+                    ref.read(searchSettingsNotifierProvider).useFuzzySearch;
 
                 if (!_kanjiRegex.hasMatch(keyword) &&
                     keyword.length <= 1 &&
@@ -66,7 +67,7 @@ class SearchPageState extends ConsumerState<SearchPage> {
                   fuzzy: fuzzy,
                 );
               },
-              style: Theme.of(context).textTheme.bodyMedium,
+              style: context.theme.textTheme.bodyMedium,
               decoration: const InputDecoration(
                 border: InputBorder.none,
                 hintText: "Search for kanji, words, etc",
@@ -84,11 +85,11 @@ class SearchPageState extends ConsumerState<SearchPage> {
                 children: [
                   Text(
                     "Fetched ${searchResult?.rowsCount} rows in ${searchResult?.duration}ms.",
-                    style: Theme.of(context).textTheme.bodySmall,
+                    style: context.theme.textTheme.bodySmall,
                   ),
                   Text(
                     "${searchResult?.resultCount} results found.",
-                    style: Theme.of(context).textTheme.bodySmall,
+                    style: context.theme.textTheme.bodySmall,
                   )
                 ],
               ),

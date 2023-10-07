@@ -7,6 +7,8 @@ import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart
 import 'package:jisho_lens/components/search_results.dart';
 import 'package:jisho_lens/components/search_warning.dart';
 import 'package:jisho_lens/constants/kana_patterns.dart';
+import 'package:jisho_lens/extensions/context_extensions.dart';
+import 'package:jisho_lens/extensions/sizedbox_extensions.dart';
 import 'package:jisho_lens/models/scanned_image.dart';
 import 'package:jisho_lens/providers/jmdict_provider.dart';
 import 'package:jisho_lens/providers/search_settings_provider.dart';
@@ -28,6 +30,7 @@ class LensPageState extends ConsumerState<LensPage> {
   final _panelController = PanelController();
   final _interactiveViewController = TransformationController();
   final _kanjiPattern = RegExp("[$kKanjiPattern]");
+
   // this is a bit of a hack to remember that we've set the initial position
   // of the InteractiveViewer. If we don't do this, the viewer will get transformed
   // everytime it gets rebuilt.
@@ -53,7 +56,7 @@ class LensPageState extends ConsumerState<LensPage> {
   @override
   Widget build(BuildContext context) {
     final imagePath = ref.watch(selectedImagePath);
-    final searchResult = ref.watch(JMDictNotifier.provider);
+    final searchResult = ref.watch(jMDictNotifierProvider);
     final line = ref.watch(selectedLine);
     final word = ref.watch(selectedWord);
 
@@ -101,12 +104,12 @@ class LensPageState extends ConsumerState<LensPage> {
               final image = snapshot.data!.image;
               final textLines = snapshot.data!.textLines!;
 
-              if (textLines == null || textLines.isEmpty) {
+              if (textLines.isEmpty) {
                 return Center(
                   child: Text(
                     "No Japanese text was recognised.\n"
                     "Try scanning a different image.",
-                    style: Theme.of(context).textTheme.titleMedium,
+                    style: context.theme.textTheme.titleMedium,
                     textAlign: TextAlign.center,
                   ),
                 );
@@ -162,7 +165,7 @@ class LensPageState extends ConsumerState<LensPage> {
           panel: Container(
             decoration: BoxDecoration(
               borderRadius: radius,
-              color: Theme.of(context).backgroundColor,
+              color: context.theme.colorScheme.background,
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -183,18 +186,16 @@ class LensPageState extends ConsumerState<LensPage> {
                                 const SizedBox(width: 8),
                             itemBuilder: (context, index) {
                               final text = line[index];
-                              var background = Theme.of(context)
-                                  .colorScheme
-                                  .primary
-                                  .withOpacity(
-                                    text == word ? 0.2 : 0.05,
-                                  );
+                              var background =
+                                  context.theme.colorScheme.primary.withOpacity(
+                                text == word ? 0.2 : 0.05,
+                              );
                               return GestureDetector(
                                 onTap: () {
                                   final useFuzzySearch = ref
-                                      .read(SearchSettingsNotifier.provider)
+                                      .read(searchSettingsNotifierProvider)
                                       .useFuzzySearch;
-                                      
+
                                   if (!_kanjiPattern.hasMatch(text) &&
                                       text.length <= 1 &&
                                       useFuzzySearch) {
@@ -208,7 +209,7 @@ class LensPageState extends ConsumerState<LensPage> {
 
                                   ref.read(selectedWord.notifier).state = text;
                                   ref
-                                      .read(JMDictNotifier.provider.notifier)
+                                      .read(jMDictNotifierProvider.notifier)
                                       .updateResults(
                                         keyword: text,
                                         fuzzy: useFuzzySearch,
@@ -231,7 +232,7 @@ class LensPageState extends ConsumerState<LensPage> {
                             itemCount: line.length,
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        16.verticalBox,
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           child: Visibility(
@@ -243,23 +244,24 @@ class LensPageState extends ConsumerState<LensPage> {
                               children: [
                                 Text(
                                   "Fetched ${searchResult?.rowsCount} rows in ${searchResult?.duration}ms.",
-                                  style: Theme.of(context).textTheme.bodySmall,
+                                  style: context.theme.textTheme.bodySmall,
                                 ),
                                 Text(
                                   "${searchResult?.resultCount} results found.",
-                                  style: Theme.of(context).textTheme.bodySmall,
+                                  style: context.theme.textTheme.bodySmall,
                                 )
                               ],
                             ),
                           ),
                         ),
-                        line.isNotEmpty
-                            ? SearchResults(
-                                searchResult: searchResult,
-                                searchKeyword: selectedWord,
-                                ref: ref,
-                              )
-                            : Container()
+                        if (line.isNotEmpty)
+                          SearchResults(
+                            searchResult: searchResult,
+                            searchKeyword: selectedWord,
+                            ref: ref,
+                          )
+                        else
+                          Container()
                       ],
                     ),
                   ),
@@ -301,7 +303,7 @@ class LensPageState extends ConsumerState<LensPage> {
     }
 
     // reset the search result when the user clicked  on a different line
-    ref.read(JMDictNotifier.provider.notifier).reset();
+    ref.read(jMDictNotifierProvider.notifier).reset();
     ref.read(selectedWord.notifier).state = "";
 
     final words = _wordExtractor.splitToWords(textLines[lineIndex].text);

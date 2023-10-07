@@ -1,31 +1,27 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
 import 'package:jisho_lens/constants/box_names.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+
+part 'search_settings_provider.g.dart';
 
 // just in case if we have more settings to add in the future
 class SearchSettings {
   final bool useFuzzySearch;
-
   SearchSettings({this.useFuzzySearch = false});
 }
 
-class SearchSettingsNotifier extends StateNotifier<SearchSettings> {
-  final Box<dynamic> settingsBox;
+@riverpod
+class SearchSettingsNotifier extends _$SearchSettingsNotifier {
+  Box<dynamic> settingsBox = Hive.box<dynamic>(kSettingsBox);
 
-  SearchSettingsNotifier(this.settingsBox)
-      : super(SearchSettings(
-          useFuzzySearch: settingsBox.get("enable_fuzzy_search") ?? false,
-        ));
-
-  static final provider =
-      StateNotifierProvider<SearchSettingsNotifier, SearchSettings>((ref) {
-    final settingsBox = Hive.box<dynamic>(kSettingsBox);
-
-    return SearchSettingsNotifier(settingsBox);
-  });
+  @override
+  SearchSettings build() {
+    final enableFuzzySearch = settingsBox.get("use_fuzzy_search") ?? false;
+    return SearchSettings(useFuzzySearch: enableFuzzySearch);
+  }
 
   void setFuzzySearchTo(bool isEnabled) {
     state = SearchSettings(useFuzzySearch: isEnabled);
-    settingsBox.put("enable_fuzzy_search", isEnabled);
+    settingsBox.put("use_fuzzy_search", isEnabled);
   }
 }

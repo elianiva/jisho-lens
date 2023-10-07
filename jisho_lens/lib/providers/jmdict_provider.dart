@@ -1,32 +1,31 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jisho_lens/models/jmdict_result.dart';
-import 'package:jisho_lens/repository/jmdict_repository.dart';
+import 'package:jisho_lens/providers/jmdict_repository_provider.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-class JMDictNotifier extends StateNotifier<JMdictResult?> {
-  JMDictNotifier(this.client, this.read) : super(null);
+part 'jmdict_provider.g.dart';
 
-  JMDictRepository client;
-  Reader read;
+@riverpod
+class JMDictNotifier extends _$JMDictNotifier {
+  JMDictNotifier();
 
-  static final isFetching = StateProvider.autoDispose<bool>((ref) => false);
-  
-  static final provider =
-      StateNotifierProvider.autoDispose<JMDictNotifier, JMdictResult?>((ref) {
-    final client = JMDictRepository();
+  bool isFetching = false;
 
-    return JMDictNotifier(client, ref.read);
-  });
+  @override
+  JMdictResult? build() {
+    return null;
+  }
 
   Future<void> updateResults({
     required String keyword,
     required bool fuzzy,
   }) async {
-    read(isFetching.notifier).state = true;
+    isFetching = true;
     // always reset before updating the results
     state = null;
-    final data = await client.findByKeyword(keyword: keyword, fuzzy: fuzzy);
-    state = data;
-    read(isFetching.notifier).state = false;
+    state = await ref
+        .watch(jmDictRepositoryProvider)
+        .findByKeyword(keyword: keyword, fuzzy: fuzzy);
+    isFetching = false;
   }
 
   void reset() {

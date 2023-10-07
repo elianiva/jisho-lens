@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:jisho_lens/extensions/context_extensions.dart';
+import 'package:jisho_lens/extensions/sizedbox_extensions.dart';
 import 'package:jisho_lens/providers/db_status_provider.dart';
 import 'package:jisho_lens/screens/lens.dart';
 import 'package:jisho_lens/providers/ocr_provider.dart';
@@ -27,7 +29,7 @@ class HomePageState extends ConsumerState<HomePage> {
             child: TextButton(
               style: ButtonStyle(
                 backgroundColor: MaterialStateProperty.all(
-                  Theme.of(context).colorScheme.primary.withOpacity(0.075),
+                  context.theme.colorScheme.primary.withOpacity(0.075),
                 ),
                 shape: MaterialStateProperty.all(
                   RoundedRectangleBorder(
@@ -41,14 +43,14 @@ class HomePageState extends ConsumerState<HomePage> {
                   children: <Widget>[
                     Icon(
                       Icons.camera_outlined,
-                      color: Theme.of(context).textTheme.labelLarge?.color,
+                      color: context.theme.textTheme.labelLarge?.color,
                       size: 32.0,
                       semanticLabel: "Take a picture",
                     ),
-                    const SizedBox(height: 18),
+                    18.verticalBox,
                     Text(
                       "Take a picture",
-                      style: Theme.of(context).textTheme.titleMedium,
+                      style: context.theme.textTheme.titleMedium,
                     ),
                   ],
                 ),
@@ -56,14 +58,14 @@ class HomePageState extends ConsumerState<HomePage> {
               onPressed: () => _scanImage(context, ImageSource.camera),
             ),
           ),
-          const SizedBox(height: 16),
+          16.verticalBox,
           SizedBox(
             width: 180,
             height: 180,
             child: TextButton(
               style: ButtonStyle(
                 backgroundColor: MaterialStateProperty.all(
-                  Theme.of(context).colorScheme.primary.withOpacity(0.075),
+                  context.theme.colorScheme.primary.withOpacity(0.075),
                 ),
                 shape: MaterialStateProperty.all(
                   RoundedRectangleBorder(
@@ -78,14 +80,14 @@ class HomePageState extends ConsumerState<HomePage> {
                   children: <Widget>[
                     Icon(
                       Icons.image_outlined,
-                      color: Theme.of(context).textTheme.labelLarge?.color,
+                      color: context.theme.textTheme.labelLarge?.color,
                       size: 32.0,
                       semanticLabel: "Scan from gallery",
                     ),
-                    const SizedBox(height: 18),
+                    18.verticalBox,
                     Text(
                       "Scan from gallery",
-                      style: Theme.of(context).textTheme.titleMedium,
+                      style: context.theme.textTheme.titleMedium,
                     ),
                   ],
                 ),
@@ -102,12 +104,12 @@ class HomePageState extends ConsumerState<HomePage> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(
           "You can't use this feature until you've imported the dictionary database.",
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Colors.white,
-              ),
+          style: context.theme.textTheme.titleMedium?.copyWith(
+            color: Colors.white,
+          ),
         ),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: Theme.of(context).errorColor,
+        backgroundColor: context.theme.colorScheme.error,
       ));
       return;
     }

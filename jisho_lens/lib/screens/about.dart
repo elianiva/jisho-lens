@@ -1,16 +1,22 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:jisho_lens/extensions/context_extensions.dart';
 import 'package:jisho_lens/providers/theme_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class AboutPage extends ConsumerWidget {
+class AboutPage extends ConsumerStatefulWidget {
   const AboutPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final currentTheme = ref.watch(PreferredThemeNotifier.provider);
-    final systemTheme = MediaQuery.of(context).platformBrightness;
+  AboutPageState createState() => AboutPageState();
+}
+
+class AboutPageState extends ConsumerState<AboutPage> {
+  @override
+  Widget build(BuildContext context) {
+    final currentTheme = ref.watch(preferredThemeNotifierProvider);
+    final systemTheme = context.mediaQuery.platformBrightness;
     String logoPath = "";
 
     switch (currentTheme) {
@@ -33,7 +39,7 @@ class AboutPage extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
           child: RichText(
             text: TextSpan(
-              style: Theme.of(context).textTheme.bodyMedium,
+              style: context.theme.textTheme.bodyMedium,
               children: [
                 const TextSpan(
                   text: "        Jisho Lense",
@@ -69,7 +75,7 @@ class AboutPage extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           child: RichText(
             text: TextSpan(
-              style: Theme.of(context).textTheme.bodyMedium,
+              style: context.theme.textTheme.bodyMedium,
               children: const [
                 TextSpan(
                   text: "        This app is Open Source and hosted on Github."
@@ -91,7 +97,7 @@ class AboutPage extends ConsumerWidget {
                 ),
                 style: ButtonStyle(
                   backgroundColor: MaterialStateProperty.all(
-                    Theme.of(context).colorScheme.primary.withOpacity(0.075),
+                    context.theme.colorScheme.primary.withOpacity(0.075),
                   ),
                   padding: MaterialStateProperty.all(
                     const EdgeInsets.symmetric(vertical: 10),
@@ -102,14 +108,15 @@ class AboutPage extends ConsumerWidget {
                   children: [
                     Icon(
                       Icons.bug_report,
-                      color: Theme.of(context).colorScheme.onBackground,
+                      color: context.theme.colorScheme.onBackground,
                       size: 28,
                     ),
                     const SizedBox(width: 8),
                     Text(
                       "Report an issue",
                       style: TextStyle(
-                          color: Theme.of(context).colorScheme.onBackground),
+                        color: context.theme.colorScheme.onBackground,
+                      ),
                     ),
                   ],
                 ),
@@ -122,7 +129,7 @@ class AboutPage extends ConsumerWidget {
                 ),
                 style: ButtonStyle(
                   backgroundColor: MaterialStateProperty.all(
-                    Theme.of(context).colorScheme.primary.withOpacity(0.075),
+                    context.theme.colorScheme.primary.withOpacity(0.075),
                   ),
                   padding: MaterialStateProperty.all(
                     const EdgeInsets.symmetric(vertical: 10),
@@ -136,7 +143,8 @@ class AboutPage extends ConsumerWidget {
                     Text(
                       "See on Github",
                       style: TextStyle(
-                          color: Theme.of(context).colorScheme.onBackground),
+                        color: context.theme.colorScheme.onBackground,
+                      ),
                     ),
                   ],
                 ),
@@ -166,22 +174,24 @@ class AboutPage extends ConsumerWidget {
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
-      showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: const Text("Error"),
-            content: const Text("Failed to open the URL."),
-            insetPadding: const EdgeInsets.all(24),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("OK"),
-              ),
-            ],
-          );
-        },
-      );
+      if (mounted) {
+        await showDialog(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: const Text("Error"),
+              content: const Text("Failed to open the URL."),
+              insetPadding: const EdgeInsets.all(24),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("OK"),
+                ),
+              ],
+            );
+          },
+        );
+      }
     }
   }
 }

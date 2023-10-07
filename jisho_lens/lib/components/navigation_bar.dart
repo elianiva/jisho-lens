@@ -5,7 +5,9 @@ import 'package:jisho_lens/providers/db_status_provider.dart';
 import 'package:jisho_lens/providers/page_navigation_provider.dart';
 
 class CustomNavigationBar extends ConsumerWidget {
-  const CustomNavigationBar({super.key});
+  const CustomNavigationBar({super.key, required this.pageController});
+
+  final PageController pageController;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -19,11 +21,11 @@ class CustomNavigationBar extends ConsumerWidget {
         NavigationBar(
           selectedIndex: ref.watch(activePage),
           onDestinationSelected: (index) {
-            ref.read(pageController).animateToPage(
-                  index,
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOut,
-                );
+            pageController.animateToPage(
+              index,
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+            );
           },
           destinations: const [
             NavigationDestination(

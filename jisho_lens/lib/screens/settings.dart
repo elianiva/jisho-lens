@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:jisho_lens/extensions/context_extensions.dart';
 import 'package:jisho_lens/providers/db_status_provider.dart';
 import 'package:jisho_lens/providers/search_settings_provider.dart';
 import 'package:jisho_lens/providers/theme_provider.dart';
@@ -22,16 +23,16 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = ref.watch(PreferredThemeNotifier.provider);
+    final theme = ref.watch(preferredThemeNotifierProvider);
 
     return SettingsList(
       darkTheme: SettingsThemeData(
-        settingsListBackground: Theme.of(context).backgroundColor,
-        titleTextColor: Theme.of(context).colorScheme.primary,
+        settingsListBackground: context.theme.colorScheme.background,
+        titleTextColor: context.theme.colorScheme.primary,
       ),
       lightTheme: SettingsThemeData(
-        settingsListBackground: Theme.of(context).backgroundColor,
-        titleTextColor: Theme.of(context).colorScheme.primary,
+        settingsListBackground: context.theme.colorScheme.background,
+        titleTextColor: context.theme.colorScheme.primary,
       ),
       sections: [
         SettingsSection(
@@ -41,15 +42,15 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
               onPressed: (_) => _selectTheme(),
               leading: Icon(
                 Icons.format_paint_rounded,
-                color: Theme.of(context).textTheme.titleMedium?.color,
+                color: context.theme.textTheme.titleMedium?.color,
               ),
               title: Text(
                 "Theme",
-                style: Theme.of(context).textTheme.bodyMedium,
+                style: context.theme.textTheme.bodyMedium,
               ),
               value: Text(
                 theme.describe,
-                style: Theme.of(context).textTheme.bodySmall,
+                style: context.theme.textTheme.bodySmall,
               ),
             ),
           ],
@@ -61,30 +62,30 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
               onPressed: (_) => _importDatabase(),
               leading: Icon(
                 Icons.my_library_books,
-                color: Theme.of(context).textTheme.titleMedium?.color,
+                color: context.theme.textTheme.titleMedium?.color,
               ),
               title: Text(
                 "Import Dictionary",
-                style: Theme.of(context).textTheme.bodyMedium,
+                style: context.theme.textTheme.bodyMedium,
               ),
               value: Text(
                 "Import a dictionary from your local storage",
-                style: Theme.of(context).textTheme.bodySmall,
+                style: context.theme.textTheme.bodySmall,
               ),
             ),
             SettingsTile(
               onPressed: (_) => _removeDatabase(),
               leading: Icon(
                 Icons.highlight_remove_sharp,
-                color: Theme.of(context).textTheme.titleMedium?.color,
+                color: context.theme.textTheme.titleMedium?.color,
               ),
               title: Text(
                 "Remove Dictionary",
-                style: Theme.of(context).textTheme.bodyMedium,
+                style: context.theme.textTheme.bodyMedium,
               ),
               value: Text(
                 "Remove a dictionary from the app database",
-                style: Theme.of(context).textTheme.bodySmall,
+                style: context.theme.textTheme.bodySmall,
               ),
             ),
           ],
@@ -93,22 +94,22 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
             title: const Text("RESULT ACCURACY"),
             tiles: <SettingsTile>[
               SettingsTile.switchTile(
-                activeSwitchColor: Theme.of(context).colorScheme.primary,
+                activeSwitchColor: context.theme.colorScheme.primary,
                 initialValue:
-                    ref.watch(SearchSettingsNotifier.provider).useFuzzySearch,
+                    ref.watch(searchSettingsNotifierProvider).useFuzzySearch,
                 onToggle: (bool value) {
                   ref
-                      .read(SearchSettingsNotifier.provider.notifier)
+                      .read(searchSettingsNotifierProvider.notifier)
                       .setFuzzySearchTo(value);
                 },
                 title: Text(
                   "Full Text Search for kana",
-                  style: Theme.of(context).textTheme.bodyMedium,
+                  style: context.theme.textTheme.bodyMedium,
                 ),
                 description: Text(
                   "This is useful when you want to search for a word but you only know certain parts of the kana."
                   "Use it only when you need it because it will slow down the searching process.",
-                  style: Theme.of(context).textTheme.bodySmall,
+                  style: context.theme.textTheme.bodySmall,
                 ),
               )
             ])
@@ -117,8 +118,8 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   void _selectTheme() {
-    final themeNotifier = ref.watch(PreferredThemeNotifier.provider.notifier);
-    final theme = ref.read(PreferredThemeNotifier.provider);
+    final themeNotifier = ref.watch(preferredThemeNotifierProvider.notifier);
+    final theme = ref.read(preferredThemeNotifierProvider);
 
     showDialog(
       context: context,
@@ -131,7 +132,7 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
               RadioListTile(
                 title: const Text("Follows System"),
                 value: PreferredTheme.system,
-                activeColor: Theme.of(context).colorScheme.primary,
+                activeColor: context.theme.colorScheme.primary,
                 groupValue: theme,
                 onChanged: (theme) {
                   themeNotifier.setPreferredTheme(PreferredTheme.system);
@@ -141,7 +142,7 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
               RadioListTile(
                 title: const Text("Dark"),
                 value: PreferredTheme.dark,
-                activeColor: Theme.of(context).colorScheme.primary,
+                activeColor: context.theme.colorScheme.primary,
                 groupValue: theme,
                 onChanged: (theme) {
                   themeNotifier.setPreferredTheme(PreferredTheme.dark);
@@ -151,7 +152,7 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
               RadioListTile(
                 title: const Text("Light"),
                 value: PreferredTheme.light,
-                activeColor: Theme.of(context).colorScheme.primary,
+                activeColor: context.theme.colorScheme.primary,
                 groupValue: theme,
                 onChanged: (theme) {
                   themeNotifier.setPreferredTheme(PreferredTheme.light);
@@ -172,7 +173,7 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
     );
 
     if (result == null) return;
-    if (result.files.first.extension != "db") {
+    if (result.files.first.extension != "db" && mounted) {
       await showDialog(
         context: context,
         builder: (context) {
@@ -192,16 +193,18 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
       return;
     }
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return const AlertDialog(
-          title: Text("Importing..."),
-          content: LinearProgressIndicator(),
-        );
-      },
-    );
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) {
+          return const AlertDialog(
+            title: Text("Importing..."),
+            content: LinearProgressIndicator(),
+          );
+        },
+      );
+    }
 
     try {
       await _jmdictRepository.importDbFile(result.files.first.path);
@@ -214,10 +217,10 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(
           "The database file has been imported successfully.",
-          style: Theme.of(context).textTheme.titleMedium,
+          style: context.theme.textTheme.titleMedium,
         ),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: Theme.of(context).dialogBackgroundColor,
+        backgroundColor: context.theme.dialogBackgroundColor,
       ));
     } catch (ex) {
       if (!mounted) return;
@@ -227,7 +230,7 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
           style: TextStyle(color: Colors.white),
         ),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: Theme.of(context).errorColor,
+        backgroundColor: context.theme.colorScheme.error,
       ));
     }
   }
@@ -259,10 +262,10 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                     content: Text(
                       "Database has been removed successfully.",
-                      style: Theme.of(context).textTheme.titleMedium,
+                      style: context.theme.textTheme.titleMedium,
                     ),
                     behavior: SnackBarBehavior.floating,
-                    backgroundColor: Theme.of(context).dialogBackgroundColor,
+                    backgroundColor: context.theme.dialogBackgroundColor,
                   ));
                 } catch (ex) {
                   String reason = "";
@@ -278,7 +281,7 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                       style: const TextStyle(color: Colors.white),
                     ),
                     behavior: SnackBarBehavior.floating,
-                    backgroundColor: Theme.of(context).errorColor,
+                    backgroundColor: context.theme.colorScheme.error,
                   ));
                 }
               },

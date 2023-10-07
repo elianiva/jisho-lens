@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jisho_lens/extensions/context_extensions.dart';
 
 class BulletedList extends StatelessWidget {
   const BulletedList({super.key, required this.items});
@@ -13,9 +14,9 @@ class BulletedList extends StatelessWidget {
           .map(
             (e) => Text(
               "\u2022 $e",
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    height: 1.8,
-                  ),
+              style: context.theme.textTheme.bodySmall?.copyWith(
+                height: 1.8,
+              ),
             ),
           )
           .toList(),

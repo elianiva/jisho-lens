@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jisho_lens/components/result_card.dart';
+import 'package:jisho_lens/extensions/context_extensions.dart';
 import 'package:jisho_lens/models/jmdict_result.dart';
 import 'package:jisho_lens/providers/jmdict_provider.dart';
 
@@ -33,10 +34,10 @@ class SearchResults extends ConsumerWidget {
               searchResult != null && searchResult!.vocabularies.isNotEmpty,
           replacement: Center(
             child: Visibility(
-              visible: ref.watch(JMDictNotifier.isFetching),
+              visible: ref.watch(jMDictNotifierProvider.notifier).isFetching,
               replacement: Text(
                 "No Result",
-                style: Theme.of(context).textTheme.bodySmall,
+                style: context.theme.textTheme.bodySmall,
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,

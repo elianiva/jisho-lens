@@ -1,6 +1,8 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
 import 'package:jisho_lens/constants/box_names.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+
+part 'theme_provider.g.dart';
 
 enum PreferredTheme {
   system("Follows system"),
@@ -13,22 +15,17 @@ enum PreferredTheme {
   String get describe => _humanReadable;
 }
 
-class PreferredThemeNotifier extends StateNotifier<PreferredTheme> {
-  final Box<String> themeBox;
+@riverpod
+class PreferredThemeNotifier extends _$PreferredThemeNotifier {
+  final Box<String> themeBox = Hive.box<String>(kThemeBox);
 
-  PreferredThemeNotifier(this.themeBox)
-      : super(
-          PreferredTheme.values.firstWhere(
-            (p) => p.name == themeBox.get("theme"),
-            orElse: () => PreferredTheme.system,
-          ),
-        );
-
-  static final provider =
-      StateNotifierProvider<PreferredThemeNotifier, PreferredTheme>((ref) {
-    final themeBox = Hive.box<String>(kThemeBox);
-    return PreferredThemeNotifier(themeBox);
-  });
+  @override
+  PreferredTheme build() {
+    return PreferredTheme.values.firstWhere(
+      (p) => p.name == themeBox.get("theme"),
+      orElse: () => PreferredTheme.system,
+    );
+  }
 
   void setPreferredTheme(PreferredTheme theme) {
     state = theme;

@@ -2,10 +2,10 @@ import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
 class SqliteClient {
-  SqliteClient._privateConstructor();
+  SqliteClient._();
 
   static String? _path;
-  static final instance = SqliteClient._privateConstructor();
+  static final instance = SqliteClient._();
   static Database? _dbInstance;
 
   Future<Database>? get db async => _dbInstance ?? await _getInstance();
@@ -24,7 +24,6 @@ class SqliteClient {
   }
 
   Future<void> close() async {
-    if (_dbInstance == null) return;
     await _dbInstance?.close();
   }
 }

@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:jisho_lens/components/navigation_bar.dart';
 import 'package:jisho_lens/constants/box_names.dart';
+import 'package:jisho_lens/extensions/context_extensions.dart';
 import 'package:jisho_lens/screens/about.dart';
 import 'package:jisho_lens/screens/home.dart';
 import 'package:jisho_lens/screens/lens.dart';
@@ -17,8 +19,6 @@ import 'package:jisho_lens/providers/ocr_provider.dart';
 import 'package:jisho_lens/providers/page_navigation_provider.dart';
 import 'package:jisho_lens/providers/theme_provider.dart';
 import 'package:jisho_lens/services/sqlite_client.dart';
-import 'package:jisho_lens/themes/dark_theme.dart';
-import 'package:jisho_lens/themes/light_theme.dart';
 import 'package:share_handler/share_handler.dart';
 
 Future<void> main() async {
@@ -30,7 +30,7 @@ Future<void> main() async {
   // open the hive box so we don't have to deal with async stuff later
   await Hive.initFlutter();
   await Hive.openBox<String>(kThemeBox);
-  await Hive.openBox(kSettingsBox);
+  await Hive.openBox<dynamic>(kSettingsBox);
 
   runApp(const ProviderScope(child: MyApp()));
 }
@@ -43,7 +43,7 @@ class MyApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ThemeMode themeMode = ThemeMode.system;
-    PreferredTheme currentTheme = ref.watch(PreferredThemeNotifier.provider);
+    PreferredTheme currentTheme = ref.watch(preferredThemeNotifierProvider);
 
     switch (currentTheme) {
       case PreferredTheme.light:
@@ -57,14 +57,23 @@ class MyApp extends ConsumerWidget {
         themeMode = ThemeMode.system;
     }
 
-    return MaterialApp(
-      navigatorKey: navigatorKey,
-      title: 'Jisho Lens',
-      themeMode: themeMode,
-      darkTheme: darkTheme,
-      theme: lightTheme,
-      home: const RootPage(),
-    );
+    return DynamicColorBuilder(builder: (lightColorscheme, darkColorscheme) {
+      return MaterialApp(
+        navigatorKey: navigatorKey,
+        title: 'Jisho Lens',
+        themeMode: themeMode,
+        theme: ThemeData(
+          colorScheme: lightColorscheme ?? ColorScheme.fromSwatch(primarySwatch: Colors.blue),
+          useMaterial3: true,
+        ),
+        darkTheme: ThemeData(
+          colorScheme:
+              darkColorscheme ?? ColorScheme.fromSwatch(primarySwatch: Colors.blue, brightness: Brightness.dark),
+          useMaterial3: true,
+        ),
+        home: const RootPage(),
+      );
+    });
   }
 }
 
@@ -83,7 +92,7 @@ class RootPage extends ConsumerStatefulWidget {
 }
 
 class _RootPageState extends ConsumerState<RootPage> {
-  late final _pageController = ref.read(pageController);
+  late final _pageController = PageController();
   SharedMedia? media;
 
   @override
@@ -93,11 +102,7 @@ class _RootPageState extends ConsumerState<RootPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final dbPath = await SqliteClient.instance.path;
       final dbFileExists = await File(dbPath).exists();
-      if (dbFileExists) {
-        ref.read(dbStatus.notifier).state = DbStatus.ready;
-      } else {
-        ref.read(dbStatus.notifier).state = DbStatus.empty;
-      }
+      ref.read(dbStatus.notifier).state = DbStatus.fromBoolean(dbFileExists);
     });
 
     initPlatformState();
@@ -115,42 +120,37 @@ class _RootPageState extends ConsumerState<RootPage> {
 
     if (media != null) {
       if (!mounted) return;
-      ref.read(selectedImagePath.notifier).state =
-          media?.attachments?.first?.path;
-      navigatorKey.currentState
-          ?.push(MaterialPageRoute(builder: (_) => const LensPage()));
+      ref.read(selectedImagePath.notifier).state = media?.attachments?.first?.path;
+      navigatorKey.currentState?.push(MaterialPageRoute(builder: (_) => const LensPage()));
     }
 
     handler.sharedMediaStream.listen((SharedMedia media) {
       if (!mounted) return;
-      ref.read(selectedImagePath.notifier).state =
-          media.attachments?.first?.path;
-      navigatorKey.currentState
-          ?.push(MaterialPageRoute(builder: (_) => const LensPage()));
+      ref.read(selectedImagePath.notifier).state = media.attachments?.first?.path;
+      navigatorKey.currentState?.push(MaterialPageRoute(builder: (_) => const LensPage()));
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final currentTheme = ref.watch(PreferredThemeNotifier.provider);
+    final currentTheme = ref.watch(preferredThemeNotifierProvider);
     final systemTheme = MediaQuery.of(context).platformBrightness;
     String logoPath = "";
 
     switch (currentTheme) {
       case PreferredTheme.dark:
-        logoPath = "logo_light.png";
+        logoPath = "assets/logo_light.png";
         break;
       case PreferredTheme.light:
-        logoPath = "logo_dark.png";
+        logoPath = "assets/logo_dark.png";
         break;
       case PreferredTheme.system:
       default:
-        logoPath =
-            systemTheme == Brightness.dark ? "logo_light.png" : "logo_dark.png";
+        logoPath = systemTheme == Brightness.dark ? "assets/logo_light.png" : "assets/logo_dark.png";
     }
 
     return Scaffold(
-      backgroundColor: Theme.of(context).backgroundColor,
+      backgroundColor: context.theme.colorScheme.background,
       appBar: AppBar(
         title: Image(
           image: AssetImage(logoPath),
@@ -166,7 +166,7 @@ class _RootPageState extends ConsumerState<RootPage> {
           children: widget.pages,
         ),
       ),
-      bottomNavigationBar: const CustomNavigationBar(),
+      bottomNavigationBar: CustomNavigationBar(pageController: _pageController),
     );
   }
 }

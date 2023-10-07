@@ -15,8 +15,10 @@ class ScannedImagePainter extends CustomPainter {
   void paint(ui.Canvas canvas, ui.Size size) {
     // dim the original image
     final paint = Paint()
-      ..colorFilter =
-          ColorFilter.mode(Colors.black.withOpacity(0.4), BlendMode.darken);
+      ..colorFilter = ColorFilter.mode(
+        Colors.black.withOpacity(0.4),
+        BlendMode.darken,
+      );
     canvas.drawImage(image, Offset.zero, paint);
   }
 
