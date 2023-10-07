@@ -94,7 +94,7 @@ public class JmdictSource
                                  where r.Element(JmdictReadingNoKanji) is null && readingElements.Count() <= 1
                                  select new Reading(
                                      KanjiText: r.Element(JmdictReadingContent)?.Value ?? "",
-                                     Priorities: (r.Elements(JmdictReadingPriority).Select(p => p.Value))
+                                     Priorities: r.Elements(JmdictReadingPriority).Select(p => p.Value)
                                  ),
                 Senses: from s in entry.Elements(JmdictSense)
                         select new Sense(
@@ -102,7 +102,7 @@ public class JmdictSource
                             // un-resolve the pos entity so we get the shorter version
                             // we'll resolve them in flutter
                             PartsOfSpeech: s.Elements(JmdictPartOfSpeech).Select(pos => posDefinition[pos.Value]),
-                            CrossReferences: (s.Elements(JmdictCrossReference).Select(xref => xref.Value))
+                            CrossReferences: s.Elements(JmdictCrossReference).Select(xref => xref.Value)
                         )
             );
         });
