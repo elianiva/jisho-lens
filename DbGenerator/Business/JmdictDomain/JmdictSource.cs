@@ -59,6 +59,7 @@ public class JmdictSource
         var readerSettings = new XmlReaderSettings
         {
             DtdProcessing = DtdProcessing.Parse,
+            MaxCharactersFromEntities = 0,
         };
         using var xmlReader = XmlReader.Create(fileStream, readerSettings);
 
