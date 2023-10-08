@@ -9,6 +9,7 @@ import 'package:jisho_lens/providers/db_status_provider.dart';
 import 'package:jisho_lens/providers/search_settings_provider.dart';
 import 'package:jisho_lens/providers/theme_provider.dart';
 import 'package:jisho_lens/repository/jmdict_repository.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:settings_ui/settings_ui.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
@@ -90,29 +91,24 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
             ),
           ],
         ),
-        SettingsSection(
-            title: const Text("RESULT ACCURACY"),
-            tiles: <SettingsTile>[
-              SettingsTile.switchTile(
-                activeSwitchColor: context.theme.colorScheme.primary,
-                initialValue:
-                    ref.watch(searchSettingsNotifierProvider).useFuzzySearch,
-                onToggle: (bool value) {
-                  ref
-                      .read(searchSettingsNotifierProvider.notifier)
-                      .setFuzzySearchTo(value);
-                },
-                title: Text(
-                  "Full Text Search for kana",
-                  style: context.theme.textTheme.bodyMedium,
-                ),
-                description: Text(
-                  "This is useful when you want to search for a word but you only know certain parts of the kana."
-                  "Use it only when you need it because it will slow down the searching process.",
-                  style: context.theme.textTheme.bodySmall,
-                ),
-              )
-            ])
+        SettingsSection(title: const Text("RESULT ACCURACY"), tiles: <SettingsTile>[
+          SettingsTile.switchTile(
+            activeSwitchColor: context.theme.colorScheme.primary,
+            initialValue: ref.watch(searchSettingsNotifierProvider).useFuzzySearch,
+            onToggle: (bool value) {
+              ref.read(searchSettingsNotifierProvider.notifier).setFuzzySearchTo(value);
+            },
+            title: Text(
+              "Full Text Search for kana",
+              style: context.theme.textTheme.bodyMedium,
+            ),
+            description: Text(
+              "This is useful when you want to search for a word but you only know certain parts of the kana."
+              "Use it only when you need it because it will slow down the searching process.",
+              style: context.theme.textTheme.bodySmall,
+            ),
+          )
+        ])
       ],
     );
   }
@@ -167,20 +163,57 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _importDatabase() async {
+    final status = await Permission.manageExternalStorage.request();
+    if (status.isDenied && context.mounted) {
+      await showDialog(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: const Text("Permission denied"),
+              content: const Text("Please allow the app to access your storage."),
+              actions: [
+                TextButton(
+                  child: const Text("OK"),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ],
+            );
+          });
+      return;
+    }
+
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.any,
       dialogTitle: "Pick a dictionary database",
     );
 
-    if (result == null) return;
+    if (result == null) {
+      if (context.mounted) {
+        showDialog(
+            context: context,
+            builder: (context) {
+              return AlertDialog(
+                title: const Text("No file selected"),
+                content: const Text("Please select a dictionary database."),
+                actions: [
+                  TextButton(
+                    child: const Text("OK"),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              );
+            });
+      }
+      return;
+    }
+
     if (result.files.first.extension != "db" && mounted) {
       await showDialog(
         context: context,
         builder: (context) {
           return AlertDialog(
             title: const Text("Invalid file"),
-            content: const Text(
-                "Please select a dictionary database with the correct extension (.db)"),
+            content: const Text("Please select a dictionary database with the correct extension (.db)"),
             actions: [
               TextButton(
                 child: const Text("OK"),
