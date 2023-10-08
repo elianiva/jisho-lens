@@ -57,23 +57,25 @@ class MyApp extends ConsumerWidget {
         themeMode = ThemeMode.system;
     }
 
-    return DynamicColorBuilder(builder: (lightColorscheme, darkColorscheme) {
-      return MaterialApp(
-        navigatorKey: navigatorKey,
-        title: 'Jisho Lens',
-        themeMode: themeMode,
-        theme: ThemeData(
-          colorScheme: lightColorscheme ?? ColorScheme.fromSwatch(primarySwatch: Colors.blue),
-          useMaterial3: true,
-        ),
-        darkTheme: ThemeData(
-          colorScheme:
-              darkColorscheme ?? ColorScheme.fromSwatch(primarySwatch: Colors.blue, brightness: Brightness.dark),
-          useMaterial3: true,
-        ),
-        home: const RootPage(),
-      );
-    });
+    return DynamicColorBuilder(
+      builder: (lightColorscheme, darkColorscheme) {
+        return MaterialApp(
+          navigatorKey: navigatorKey,
+          title: 'Jisho Lens',
+          themeMode: themeMode,
+          theme: ThemeData(
+            colorScheme: lightColorscheme ?? ColorScheme.fromSwatch(primarySwatch: Colors.blue),
+            useMaterial3: true,
+          ),
+          darkTheme: ThemeData(
+            colorScheme:
+                darkColorscheme ?? ColorScheme.fromSwatch(primarySwatch: Colors.blue, brightness: Brightness.dark),
+            useMaterial3: true,
+          ),
+          home: const RootPage(),
+        );
+      },
+    );
   }
 }
 

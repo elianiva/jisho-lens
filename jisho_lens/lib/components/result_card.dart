@@ -38,6 +38,11 @@ class ResultCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // fallback to split kanji into individual characters if no furigana is found
+    // this is due to some kanji not having reading from JMdictFurigana.json
+    final shownFurigana = furigana.isNotEmpty
+        ? furigana
+        : kanji.split("").map((e) => Furigana(ruby: e, rt: "", readingOrder: 0)).toList();
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -50,35 +55,30 @@ class ResultCard extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: priorities
-                .map((p) => [
+                .map((priority) => [
                       BoxedText(
-                        text: p,
-                        tooltipText: PRIORITIES_MAPPING[p] ?? p,
-                        backgroundColor: context.theme.colorScheme.secondary
-                            .withOpacity(0.25),
-                        textStyle: context.theme.textTheme.bodySmall?.copyWith(
-                          fontSize: 10,
-                        ),
+                        text: priority,
+                        tooltipText: PRIORITIES_MAPPING[priority] ?? priority,
+                        backgroundColor: context.theme.colorScheme.secondary.withOpacity(0.25),
+                        textStyle: context.theme.textTheme.bodySmall?.copyWith(fontSize: 10),
                       ),
                       8.horizontalBox,
                     ])
                 .expand((e) => e)
                 .toList(),
           ),
-          const SizedBox(height: 8),
+          8.verticalBox,
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               RubyText(
-                furigana
+                shownFurigana
                     .map(
-                      (e) => RubyTextData(
-                        e.ruby,
-                        ruby: e.rt,
-                        style: context.theme.textTheme.titleLarge?.copyWith(
-                          fontSize: 24,
-                        ),
+                      (fg) => RubyTextData(
+                        fg.ruby,
+                        ruby: fg.rt,
+                        style: context.theme.textTheme.titleLarge?.copyWith(fontSize: 24),
                         rubyStyle: context.theme.textTheme.bodySmall,
                       ),
                     )
@@ -97,10 +97,8 @@ class ResultCard extends ConsumerWidget {
                             BoxedText(
                               text: e,
                               tooltipText: POS_DEFINITION_MAPPING[e] ?? e,
-                              backgroundColor: context.theme.colorScheme.primary
-                                  .withOpacity(0.25),
-                              textStyle:
-                                  context.theme.textTheme.bodySmall?.copyWith(
+                              backgroundColor: context.theme.colorScheme.primary.withOpacity(0.25),
+                              textStyle: context.theme.textTheme.bodySmall?.copyWith(
                                 fontSize: 10,
                               ),
                             ),
@@ -124,21 +122,15 @@ class ResultCard extends ConsumerWidget {
                           return GestureDetector(
                             onTap: () {
                               // remove the numbers and change the separator to spaces
-                              final keyword = e
-                                  .replaceAll(r"・", " ")
-                                  .replaceAll(RegExp(r"\d*"), "");
-                              ref.read(currentSearchKeyword.notifier).state =
-                                  keyword;
-                              ref
-                                  .read(jMDictNotifierProvider.notifier)
-                                  .updateResults(
+                              final keyword = e.replaceAll(r"・", " ").replaceAll(RegExp(r"\d*"), "");
+                              ref.read(currentSearchKeyword.notifier).state = keyword;
+                              ref.read(jMDictNotifierProvider.notifier).updateResults(
                                     keyword: keyword,
                                     fuzzy: false,
                                   );
                             },
                             child: Text(e,
-                                style:
-                                    context.theme.textTheme.bodySmall?.copyWith(
+                                style: context.theme.textTheme.bodySmall?.copyWith(
                                   decoration: TextDecoration.underline,
                                   decorationStyle: TextDecorationStyle.dashed,
                                 )),
@@ -147,7 +139,7 @@ class ResultCard extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  8.verticalBox,
                 ],
               )
               .expand((e) => e)
