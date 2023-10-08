@@ -41,9 +41,9 @@ public class JmdictSource
     private async Task<Stream> GetFileStreamFromArchive()
     {
         Console.WriteLine("Getting file stream from archive...");
-        await using var archiveStream = new FileStream(_archivePath, FileMode.Open, FileAccess.Read);
-        await using var decompressor = new GZipStream(archiveStream, CompressionMode.Decompress);
-        var resultStream = new MemoryStream();
+        await using FileStream archiveStream = new(_archivePath, FileMode.Open, FileAccess.Read);
+        await using GZipStream decompressor = new(archiveStream, CompressionMode.Decompress);
+        MemoryStream resultStream = new();
 
         Console.WriteLine("Decompressing archive...");
         await decompressor.CopyToAsync(resultStream);
@@ -55,30 +55,30 @@ public class JmdictSource
 
     public async Task<IEnumerable<JmdictEntry>> GetEntries()
     {
-        await using var fileStream = await GetFileStreamFromArchive();
-        var readerSettings = new XmlReaderSettings
+        await using Stream fileStream = await GetFileStreamFromArchive();
+        XmlReaderSettings readerSettings = new()
         {
             DtdProcessing = DtdProcessing.Parse,
             MaxCharactersFromEntities = 0,
         };
-        using var xmlReader = XmlReader.Create(fileStream, readerSettings);
+        using XmlReader xmlReader = XmlReader.Create(fileStream, readerSettings);
 
         Console.WriteLine("Loading xml...");
-        var xDocument = XDocument.Load(xmlReader);
+        XDocument xDocument = XDocument.Load(xmlReader);
         if (xDocument.Root is null) throw new Exception("Failed to find xml root element.");
 
-        var entities = xDocument.DocumentType?.ToString();
+        string? entities = xDocument.DocumentType?.ToString();
         if (entities is null) throw new Exception("Failed to find xml entities.");
 
         // this dictionary is used to "un-resolve" the expanded entity since the XmlReader
         // doesn't allow us to do that, apparently
         Console.WriteLine("Generating entities dictionary...");
-        var posDefinition = ParseEntities(entities);
+        Dictionary<string, string> posDefinition = ParseEntities(entities);
 
         Console.WriteLine("Parsing xml...");
-        var entries = xDocument.Root.Elements(JmdictEntry).Select((entry, index) =>
+        IEnumerable<JmdictEntry> entries = xDocument.Root.Elements(JmdictEntry).Select((entry, index) =>
         {
-            var readingElements = entry.Elements(JmdictReadingElement).ToList();
+            List<XElement> readingElements = entry.Elements(JmdictReadingElement).ToList();
             return new JmdictEntry
             (
                 Id: index + 1,
@@ -112,16 +112,16 @@ public class JmdictSource
 
     private static Dictionary<string, string> ParseEntities(string dtd)
     {
-        var entityRegexp = new Regex(@"<!ENTITY (?<key>.+) ""(?<definition>.+)"">");
+        Regex entityRegexp = new(@"<!ENTITY (?<key>.+) ""(?<definition>.+)"">");
 
-        var entities = new Dictionary<string, string>();
-        foreach (var match in dtd
+        Dictionary<string, string> entities = new();
+        foreach (Match? match in dtd
                      .Split("\n")
                      .Where(d => d.StartsWith("<!ENTITY"))
                      .Select(line => entityRegexp.Match(line)))
         {
-            var key = match.Groups["key"].Value;
-            var definition = match.Groups["definition"].Value;
+            string key = match.Groups["key"].Value;
+            string definition = match.Groups["definition"].Value;
             entities[definition] = key;
         }
 

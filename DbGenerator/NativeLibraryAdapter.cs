@@ -12,7 +12,7 @@ internal class NativeLibraryAdapter : IGetFunctionPointer
         => _library = NativeLibrary.Load(name);
 
     public IntPtr GetFunctionPointer(string name)
-        => NativeLibrary.TryGetExport(_library, name, out var address)
+        => NativeLibrary.TryGetExport(_library, name, out nint address)
             ? address
             : IntPtr.Zero;
 }

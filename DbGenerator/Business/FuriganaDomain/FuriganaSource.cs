@@ -22,14 +22,14 @@ public sealed class FuriganaSource
     public async Task<IEnumerable<FuriganaEntry>> GetEntries()
     {
         Console.WriteLine("Getting entries from json...");
-        await using var fileStream = new FileStream(_jsonPath, FileMode.Open, FileAccess.Read);
-        var serializerOptions = new JsonSerializerOptions
+        await using FileStream fileStream = new(_jsonPath, FileMode.Open, FileAccess.Read);
+        JsonSerializerOptions serializerOptions = new()
         {
             Encoder = JavaScriptEncoder.Create(UnicodeRanges.All),
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         };
         Console.WriteLine("Deserializing json...");
-        var entries = await JsonSerializer.DeserializeAsync<IEnumerable<FuriganaEntry>>(fileStream, serializerOptions);
+        IEnumerable<FuriganaEntry>? entries = await JsonSerializer.DeserializeAsync<IEnumerable<FuriganaEntry>>(fileStream, serializerOptions);
         return entries?.Select((e, i) => e with { Id = i + 1 }) ?? Enumerable.Empty<FuriganaEntry>();
     }
 }

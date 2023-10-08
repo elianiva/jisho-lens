@@ -18,7 +18,7 @@ public sealed record FuriganaEntry(
 #if DEBUG
     public override string ToString()
     {
-        var serializerOptions = new JsonSerializerOptions
+        JsonSerializerOptions serializerOptions = new()
         {
             Encoder = JavaScriptEncoder.Create(UnicodeRanges.All),
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase

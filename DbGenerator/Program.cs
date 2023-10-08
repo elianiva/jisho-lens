@@ -6,28 +6,28 @@ using DbGenerator.Business.FuriganaDomain;
 using DbGenerator.Business.JmdictDomain;
 using SQLitePCL;
 
-var dataPath = Path.Join(Directory.GetCurrentDirectory(), "Data");
+string dataPath = Path.Join(Directory.GetCurrentDirectory(), "Data");
 
 // use a custom sqlite with icu support
 SQLite3Provider_dynamic_cdecl.Setup("sqlite3", new NativeLibraryAdapter(Path.Join(dataPath, "sqlite/.libs/libsqlite3.so")));
 SQLitePCL.raw.SetProvider(new SQLite3Provider_dynamic_cdecl());
 
-var furiganaSource = new FuriganaSource(Path.Join(dataPath, "JmdictFurigana.json"));
-var jmdictSource = new JmdictSource(Path.Join(dataPath, "JMdict_e.gz"));
-var inserter = new SQLiteInserter(Path.Join(dataPath, "jmdict.db"));
+FuriganaSource furiganaSource = new(Path.Join(dataPath, "JmdictFurigana.json"));
+JmdictSource jmdictSource = new(Path.Join(dataPath, "JMdict_e.gz"));
+SQLiteInserter inserter = new(Path.Join(dataPath, "jmdict.db"));
 
 try
 {
     Console.WriteLine("====[ Getting furigana entries ]====");
-    var furiganaEntries = await furiganaSource.GetEntries();
+    System.Collections.Generic.IEnumerable<FuriganaEntry> furiganaEntries = await furiganaSource.GetEntries();
 
     Console.WriteLine("====[ Getting jmdict entries ]====");
-    var jmdictEntries = await jmdictSource.GetEntries();
+    System.Collections.Generic.IEnumerable<JmdictEntry> jmdictEntries = await jmdictSource.GetEntries();
 
     Console.WriteLine("====[ Inserting entries ]====");
-    var stopwatch = new Stopwatch();
+    Stopwatch stopwatch = new();
     stopwatch.Start();
-    var insertedRows = inserter.Insert(jmdictEntries, furiganaEntries);
+    int insertedRows = inserter.Insert(jmdictEntries, furiganaEntries);
     stopwatch.Stop();
     Console.WriteLine($"====[ Inserted roughly {insertedRows} entries in {stopwatch.ElapsedMilliseconds}ms ]====");
 }
