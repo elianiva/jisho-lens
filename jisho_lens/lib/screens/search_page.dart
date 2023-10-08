@@ -46,14 +46,10 @@ class SearchPageState extends ConsumerState<SearchPage> {
 
                 ref.read(_searchKeyword.notifier).state = keyword;
 
-                final resourceNotifier =
-                    ref.read(jMDictNotifierProvider.notifier);
-                final fuzzy =
-                    ref.read(searchSettingsNotifierProvider).useFuzzySearch;
+                final resourceNotifier = ref.read(jMDictNotifierProvider.notifier);
+                final fuzzy = ref.read(searchSettingsNotifierProvider).useFuzzySearch;
 
-                if (!_kanjiRegex.hasMatch(keyword) &&
-                    keyword.length <= 1 &&
-                    fuzzy) {
+                if (!_kanjiRegex.hasMatch(keyword) && keyword.length <= 1 && fuzzy) {
                   showDialog(
                     context: context,
                     builder: (_) => const SearchWarningDialog(),
@@ -61,7 +57,6 @@ class SearchPageState extends ConsumerState<SearchPage> {
                   return;
                 }
 
-                _searchController.text = "";
                 await resourceNotifier.updateResults(
                   keyword: keyword,
                   fuzzy: fuzzy,
@@ -78,8 +73,7 @@ class SearchPageState extends ConsumerState<SearchPage> {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Visibility(
-              visible:
-                  searchResult != null && searchResult.vocabularies.isNotEmpty,
+              visible: searchResult != null && searchResult.vocabularies.isNotEmpty,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -97,7 +91,6 @@ class SearchPageState extends ConsumerState<SearchPage> {
           ),
           SearchResults(
             searchResult: searchResult,
-            ref: ref,
             searchKeyword: _searchKeyword,
           ),
         ],

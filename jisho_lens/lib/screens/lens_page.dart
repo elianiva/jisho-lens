@@ -96,8 +96,7 @@ class LensPageState extends ConsumerState<LensPage> {
               BuildContext context,
               AsyncSnapshot<ScannedImageData> snapshot,
             ) {
-              if (!snapshot.hasData &&
-                  snapshot.connectionState == ConnectionState.waiting) {
+              if (!snapshot.hasData && snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
 
@@ -139,8 +138,7 @@ class LensPageState extends ConsumerState<LensPage> {
                   maxScale: 1.0,
                   child: Builder(builder: (gestureContext) {
                     return GestureDetector(
-                      onTapDown: (details) =>
-                          _selectText(gestureContext, details, textLines),
+                      onTapDown: (details) => _selectText(gestureContext, details, textLines),
                       child: FittedBox(
                         child: SizedBox(
                           width: image.width.toDouble(),
@@ -182,35 +180,26 @@ class LensPageState extends ConsumerState<LensPage> {
                           child: ListView.separated(
                             physics: const BouncingScrollPhysics(),
                             scrollDirection: Axis.horizontal,
-                            separatorBuilder: (context, index) =>
-                                const SizedBox(width: 8),
+                            separatorBuilder: (context, index) => const SizedBox(width: 8),
                             itemBuilder: (context, index) {
                               final text = line[index];
-                              var background =
-                                  context.theme.colorScheme.primary.withOpacity(
+                              var background = context.theme.colorScheme.primary.withOpacity(
                                 text == word ? 0.2 : 0.05,
                               );
                               return GestureDetector(
                                 onTap: () {
-                                  final useFuzzySearch = ref
-                                      .read(searchSettingsNotifierProvider)
-                                      .useFuzzySearch;
+                                  final useFuzzySearch = ref.read(searchSettingsNotifierProvider).useFuzzySearch;
 
-                                  if (!_kanjiPattern.hasMatch(text) &&
-                                      text.length <= 1 &&
-                                      useFuzzySearch) {
+                                  if (!_kanjiPattern.hasMatch(text) && text.length <= 1 && useFuzzySearch) {
                                     showDialog(
                                       context: context,
-                                      builder: (_) =>
-                                          const SearchWarningDialog(),
+                                      builder: (_) => const SearchWarningDialog(),
                                     );
                                     return;
                                   }
 
                                   ref.read(selectedWord.notifier).state = text;
-                                  ref
-                                      .read(jMDictNotifierProvider.notifier)
-                                      .updateResults(
+                                  ref.read(jMDictNotifierProvider.notifier).updateResults(
                                         keyword: text,
                                         fuzzy: useFuzzySearch,
                                       );
@@ -236,8 +225,7 @@ class LensPageState extends ConsumerState<LensPage> {
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           child: Visibility(
-                            visible: searchResult != null &&
-                                searchResult.vocabularies.isNotEmpty,
+                            visible: searchResult != null && searchResult.vocabularies.isNotEmpty,
                             replacement: Container(),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -258,7 +246,6 @@ class LensPageState extends ConsumerState<LensPage> {
                           SearchResults(
                             searchResult: searchResult,
                             searchKeyword: selectedWord,
-                            ref: ref,
                           )
                         else
                           Container()
@@ -292,8 +279,7 @@ class LensPageState extends ConsumerState<LensPage> {
   ) {
     RenderBox box = context.findRenderObject() as RenderBox;
     final local = box.globalToLocal(details.globalPosition);
-    final lineIndex =
-        textLines.indexWhere((element) => element.boundingBox.contains(local));
+    final lineIndex = textLines.indexWhere((element) => element.boundingBox.contains(local));
 
     // resets everything when the user clicked outside of any text
     if (lineIndex == -1) {
@@ -320,8 +306,7 @@ class LensPageState extends ConsumerState<LensPage> {
     // scale the image to fit the screen width
     final scale = width / image.width;
     // translate on Y axis to center the image if the image is smaller than the screen height
-    final translate =
-        image.height < height ? (height - image.height * scale) / 2 : 0.0;
+    final translate = image.height < height ? (height - image.height * scale) / 2 : 0.0;
 
     _interactiveViewController.value = Matrix4.identity()
       ..scale(scale)

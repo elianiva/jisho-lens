@@ -4,7 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:jisho_lens/extensions/context_extensions.dart';
 import 'package:jisho_lens/extensions/sizedbox_extensions.dart';
 import 'package:jisho_lens/providers/db_status_provider.dart';
-import 'package:jisho_lens/screens/lens.dart';
+import 'package:jisho_lens/screens/lens_page.dart';
 import 'package:jisho_lens/providers/ocr_provider.dart';
 
 class HomePage extends ConsumerStatefulWidget {

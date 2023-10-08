@@ -9,12 +9,10 @@ class SearchResults extends ConsumerWidget {
   const SearchResults({
     super.key,
     required this.searchResult,
-    required this.ref,
     required this.searchKeyword,
   });
 
   final JMdictResult? searchResult;
-  final WidgetRef ref;
   final AutoDisposeStateProvider<String> searchKeyword;
 
   @override
@@ -30,8 +28,7 @@ class SearchResults extends ConsumerWidget {
         clipBehavior: Clip.antiAlias,
         color: Colors.transparent,
         child: Visibility(
-          visible:
-              searchResult != null && searchResult!.vocabularies.isNotEmpty,
+          visible: searchResult != null && searchResult!.vocabularies.isNotEmpty,
           replacement: Center(
             child: Visibility(
               visible: ref.watch(jMDictNotifierProvider.notifier).isFetching,
