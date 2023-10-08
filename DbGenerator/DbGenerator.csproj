@@ -30,6 +30,15 @@
     <None Remove="Data\jmdict.db" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="Data\JmdictFurigana.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Data\JMdict_e.gz">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
   <Target Name="BuildSqlite" Label="Build SQLite with ICU support">
       <Exec WorkingDirectory="./Data/sqlite" Command="CFLAGS=&quot;-O3 -DSQLITE_ENABLE_ICU&quot; CPPFLAGS=`icu-config --cppflags` LDFLAGS=`icu-config --ldflags` ./configure" />
       <Exec WorkingDirectory="./Data/sqlite" Command="make clean" />

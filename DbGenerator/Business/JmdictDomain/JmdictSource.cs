@@ -10,7 +10,7 @@ using System.Xml.Linq;
 
 namespace DbGenerator.Business.JmdictDomain;
 
-public class JmdictSource
+public partial class JmdictSource
 {
     private const string JmdictEntry = "entry";
     private const string JmdictEntrySequence = "ent_seq";
@@ -86,11 +86,11 @@ public class JmdictSource
                 KanjiElements: from k in entry.Elements(JmdictKanjiElement)
                                select new Kanji(
                                    KanjiText: k.Element(JmdictKanjiContent)?.Value ?? "",
-                                   Priorities: (k.Elements(JmdictKanjiPriority).Select(p => p.Value))
+                                   Priorities: k.Elements(JmdictKanjiPriority).Select(p => p.Value)
                                ),
                 ReadingElements: from r in readingElements
-                                     // Exclude the node if it contains the no kanji node, and is not the only reading.
-                                     // This is a behavior that seems to be implemented in Jisho (example word: 台詞).
+                                 // Exclude the node if it contains the no kanji node, and is not the only reading.
+                                 // This is a behavior that seems to be implemented in Jisho (example word: 台詞).
                                  where r.Element(JmdictReadingNoKanji) is null && readingElements.Count() <= 1
                                  select new Reading(
                                      KanjiText: r.Element(JmdictReadingContent)?.Value ?? "",
@@ -112,7 +112,7 @@ public class JmdictSource
 
     private static Dictionary<string, string> ParseEntities(string dtd)
     {
-        Regex entityRegexp = new(@"<!ENTITY (?<key>.+) ""(?<definition>.+)"">");
+        Regex entityRegexp = EntityRegex();
 
         Dictionary<string, string> entities = new();
         foreach (Match? match in dtd
@@ -127,4 +127,7 @@ public class JmdictSource
 
         return entities;
     }
+
+    [GeneratedRegex("<!ENTITY (?<key>.+) \"(?<definition>.+)\">")]
+    private static partial Regex EntityRegex();
 }

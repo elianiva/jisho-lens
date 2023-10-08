@@ -181,6 +181,7 @@ public class SQLiteInserter
         int insertedRowCount = 0;
 
         #region Furigana Entries
+
         using SqliteTransaction furiganaTrx = _connection.BeginTransaction(deferred: true);
         try
         {
@@ -190,11 +191,13 @@ public class SQLiteInserter
             {
                 SqliteCommand readingCmd = _connection.CreateCommand();
                 readingCmd.Transaction = furiganaTrx;
-                string readingValuesTemplate = string.Join(",", furiganaEntry.Furigana.Select((_, i) => $"(@readingId{i}, @readingOrder{i}, @kanjiText{i}, @reading{i}, @ruby{i}, @rt{i})"));
-                readingCmd.CommandText = $@"
-                INSERT INTO {JmdictReading} (ReadingId, ReadingOrder, KanjiText, Reading, Ruby, Rt)
-                VALUES {readingValuesTemplate};
-                ";
+                string readingValuesTemplate = string.Join(",",
+                    furiganaEntry.Furigana.Select((_, i) =>
+                        $"(@readingId{i}, @readingOrder{i}, @kanjiText{i}, @reading{i}, @ruby{i}, @rt{i})"));
+                readingCmd.CommandText = $"""
+                                            INSERT INTO {JmdictReading} (ReadingId, ReadingOrder, KanjiText, Reading, Ruby, Rt)
+                                            VALUES {readingValuesTemplate};
+                                          """;
                 int readingIdx = 0;
                 foreach (Furigana furigana in furiganaEntry.Furigana)
                 {
@@ -207,9 +210,11 @@ public class SQLiteInserter
                     readingIdx++;
                     insertedRowCount++;
                 }
+
                 readingCmd.ExecuteNonQuery();
                 insertedRowCount++;
             }
+
             furiganaTrx.Commit();
         }
         catch (DbException ex)
@@ -217,10 +222,13 @@ public class SQLiteInserter
             Console.WriteLine(ex);
             furiganaTrx.Rollback();
         }
+
         #endregion
 
         // insert them in chunks so I can see the progress
+
         #region JMdict Entries
+
         // track the sense id manually because we don't want to get its id
         // from the database otherwise it'll be too slow
         foreach (JmdictEntry[] chunk in jmdictEntries.Chunk(50_000))
@@ -232,10 +240,8 @@ public class SQLiteInserter
                 foreach (JmdictEntry? entry in chunk)
                 {
                     SqliteCommand jmdictEntryCmd = _connection.CreateCommand();
-                    jmdictEntryCmd.CommandText = $@"
-                    INSERT INTO {JmdictEntry} (Id, EntrySequence)
-                    VALUES (@id, @entrySequence);
-                    ";
+                    jmdictEntryCmd.CommandText =
+                        $"INSERT INTO {JmdictEntry} (Id, EntrySequence) VALUES (@id, @entrySequence);";
                     jmdictEntryCmd.Transaction = jmdictTrx;
                     jmdictEntryCmd.Parameters.Clear();
                     jmdictEntryCmd.Parameters.Add(new SqliteParameter("@id", entry.Id));
@@ -243,47 +249,62 @@ public class SQLiteInserter
                     jmdictEntryCmd.ExecuteNonQuery();
 
                     #region Kanji
+
                     // insert kanji and reading elements in bulk
-                    SqliteCommand kanjiCmd = _connection.CreateCommand();
-                    kanjiCmd.CommandText = $@"
-                    INSERT INTO {JmdictKanji} (EntryId, KanjiText, Priorities)
-                    VALUES (@entryId, @kanjiText, @priorities);
-                    ";
-                    kanjiCmd.Transaction = jmdictTrx;
-                    foreach (Kanji kanji in entry.KanjiElements)
+                    if (entry.KanjiElements.Any())
                     {
-                        kanjiCmd.Parameters.Clear();
-                        kanjiCmd.Parameters.Add(new SqliteParameter("@entryId", entry.Id));
-                        kanjiCmd.Parameters.Add(new SqliteParameter("@kanjiText", kanji.KanjiText));
-                        kanjiCmd.Parameters.Add(new SqliteParameter("@priorities", string.Join(",", kanji.Priorities)));
+                        SqliteCommand kanjiCmd = _connection.CreateCommand();
+                        string kanjiTemplate = string.Join(",",
+                            entry.KanjiElements.Select((_, index) => $"(@entryId{index}, @kanjiText{index}, @priorities{index})"));
+                        kanjiCmd.CommandText =
+                            $"INSERT INTO {JmdictKanji} (EntryId, KanjiText, Priorities) VALUES {kanjiTemplate};";
+                        kanjiCmd.Transaction = jmdictTrx;
+                        int kanjiIdx = 0;
+                        foreach (Kanji kanji in entry.KanjiElements)
+                        {
+                            kanjiCmd.Parameters.Add(new SqliteParameter("@entryId" + kanjiIdx, entry.Id));
+                            kanjiCmd.Parameters.Add(new SqliteParameter("@kanjiText" + kanjiIdx, kanji.KanjiText));
+                            kanjiCmd.Parameters.Add(new SqliteParameter("@priorities" + kanjiIdx,
+                                string.Join(",", kanji.Priorities)));
+                            insertedRowCount++;
+                            kanjiIdx++;
+                        }
                         kanjiCmd.ExecuteNonQuery();
-                        insertedRowCount++;
                     }
+
                     #endregion
 
                     #region Senses
+
                     // insert senses in bulk
-                    if (entry.Senses.Count() > 0)
+                    if (entry.Senses.Any())
                     {
                         SqliteCommand command = _connection.CreateCommand();
                         command.Transaction = jmdictTrx;
-                        string sensesValuesTemplate = string.Join(",", entry.Senses.Select((_, i) => $"(@entryId{i}, @glossaries{i}, @partsOfSpeech{i}, @crossReferences{i})"));
-                        command.CommandText = $@"
-                        INSERT INTO {JmdictSense} (EntryId, Glossaries, PartsOfSpeech, CrossReferences)
-                        VALUES {sensesValuesTemplate};
-                        ";
+                        string sensesValuesTemplate = string.Join(",",
+                            entry.Senses.Select((_, i) =>
+                                $"(@entryId{i}, @glossaries{i}, @partsOfSpeech{i}, @crossReferences{i})"));
+                        command.CommandText = $"""
+                                                   INSERT INTO {JmdictSense} (EntryId, Glossaries, PartsOfSpeech, CrossReferences)
+                                                   VALUES {sensesValuesTemplate};
+                                               """;
                         int senseIdx = 0;
                         foreach (Sense sense in entry.Senses)
                         {
                             command.Parameters.Add(new SqliteParameter("@entryId" + senseIdx, entry.Id));
-                            command.Parameters.Add(new SqliteParameter("@glossaries" + senseIdx, string.Join("|", sense.Glossaries)));
-                            command.Parameters.Add(new SqliteParameter("@partsOfSpeech" + senseIdx, string.Join("|", sense.PartsOfSpeech)));
-                            command.Parameters.Add(new SqliteParameter("@crossReferences" + senseIdx, string.Join("|", sense.CrossReferences)));
+                            command.Parameters.Add(new SqliteParameter("@glossaries" + senseIdx,
+                                string.Join("|", sense.Glossaries)));
+                            command.Parameters.Add(new SqliteParameter("@partsOfSpeech" + senseIdx,
+                                string.Join("|", sense.PartsOfSpeech)));
+                            command.Parameters.Add(new SqliteParameter("@crossReferences" + senseIdx,
+                                string.Join("|", sense.CrossReferences)));
                             senseIdx++;
                             insertedRowCount++;
                         }
+
                         command.ExecuteNonQuery();
                     }
+
                     #endregion
                 }
 
@@ -296,6 +317,7 @@ public class SQLiteInserter
                 jmdictTrx.Rollback();
             }
         }
+
         #endregion
 
         // add index to the table for faster query
