@@ -25,7 +25,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.elianiva.jisholens.R
 import com.elianiva.jisholens.data.AppContainer
 import com.elianiva.jisholens.ui.theme.LocalDarkTheme
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun OnboardingScreen(
@@ -40,7 +42,7 @@ fun OnboardingScreen(
     LaunchedEffect(dictionaries) {
         if (dictionaries.isNotEmpty()) {
             container.settings.setOnboardingComplete(true)
-            onDone()
+            withContext(Dispatchers.Main.immediate) { onDone() }
         }
     }
 
@@ -81,7 +83,7 @@ fun OnboardingScreen(
                 onClick = {
                     scope.launch {
                         container.settings.setOnboardingComplete(true)
-                        onDone()
+                        withContext(Dispatchers.Main.immediate) { onDone() }
                     }
                 },
             ) {
