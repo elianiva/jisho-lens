@@ -189,6 +189,7 @@ class YomitanImportTest {
 
             store.setEnabled(dictionary.id, false)
             assertTrue(DictionaryLookup(database).lookup("食べる").isEmpty())
+            assertTrue(DictionaryLookup(database).lookup("食べさせられた").isEmpty())
             assertTrue(DictionaryLookup(database).search("eat").isEmpty())
 
             store.setEnabled(dictionary.id, true)

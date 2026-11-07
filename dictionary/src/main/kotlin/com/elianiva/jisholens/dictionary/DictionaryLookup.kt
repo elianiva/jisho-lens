@@ -4,6 +4,9 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 
+/** Keeps both IN lists of a chunk below SQLite's bound-variable limit. */
+private const val QUERY_CHUNK = 400
+
 /** One term row with the glossary decoded from its compressed block. */
 data class TermResult(
     val termId: Long,
@@ -17,6 +20,8 @@ data class TermResult(
     val score: Double,
     val sequence: Long?,
     val glossary: JsonArray,
+    /** How the query was deinflected to this entry, or null for an exact match. */
+    val deinflection: Deinflection? = null,
 ) {
     val glossaryText: String get() = Glossary.text(glossary)
 }
@@ -37,20 +42,65 @@ data class KanjiResult(
 }
 
 /**
- * Reads the dictionary. [lookup] answers "what is this exact word", and
- * [search] answers "which entries contain this text", using the FTS4 tables.
+ * Reads the dictionary. [lookup] answers "what is this word", and [search]
+ * answers "which entries contain this text", using the FTS4 tables.
+ *
+ * Both accept conjugated input. An exact match comes first; when the input is
+ * not a dictionary entry, [Deinflector] finds the dictionary forms that the
+ * conjugation rules can reach.
  */
 class DictionaryLookup(private val database: SqliteDatabase) {
+    private val deinflector = Deinflector.default
+
     fun lookup(text: String, limit: Int = 32): List<TermResult> {
         val value = text.trim()
-        if (value.isEmpty()) return emptyList()
+        if (value.isEmpty() || limit <= 0) return emptyList()
+        val exact = queryExact(value, limit)
+        if (exact.size >= limit) return exact
+        val deinflections = deinflector.deinflect(value)
+            .filter { DeinflectionTags.isDictionaryForm(it.tags) }
+        if (deinflections.isEmpty()) return exact
+        val candidates = queryDeinflected(deinflections, limit)
+        if (exact.isEmpty()) return candidates
+        val seen = exact.mapTo(HashSet(exact.size)) { it.termId }
+        return (exact + candidates.filter { seen.add(it.termId) }).take(limit)
+    }
+
+    fun search(query: String, limit: Int = 50): List<TermResult> {
+        val value = query.trim()
+        if (value.isEmpty() || limit <= 0) return emptyList()
+        val match = FtsText.buildQuery(value) ?: return emptyList()
+        val exact = queryFts(match, limit)
+        if (exact.size >= limit) return exact
+        val deinflections = deinflector.deinflect(value)
+            .filter { DeinflectionTags.isDictionaryForm(it.tags) }
+        if (deinflections.isEmpty()) return exact
+
+        val seen = exact.mapTo(HashSet(exact.size)) { it.termId }
+        val extra = ArrayList<TermResult>()
+        val formsByText = LinkedHashMap<String, MutableList<Deinflection>>()
+        for (form in deinflections) {
+            formsByText.getOrPut(form.text) { ArrayList() }.add(form)
+        }
+        for ((formText, forms) in formsByText) {
+            if (exact.size + extra.size >= limit) break
+            val formQuery = FtsText.buildQuery(formText) ?: continue
+            for (term in queryFts(formQuery, limit)) {
+                if (term.termId in seen) continue
+                val form = forms.firstOrNull {
+                    DeinflectionTags.matches(term.rules, term.definitionTags, it.tags)
+                } ?: continue
+                seen.add(term.termId)
+                extra.add(term.copy(deinflection = form))
+                if (exact.size + extra.size >= limit) break
+            }
+        }
+        return exact + extra
+    }
+
+    private fun queryExact(value: String, limit: Int): List<TermResult> {
         val candidates = linkedSetOf(value, Kana.toHiragana(value), Kana.toKatakana(value)).toList()
         val placeholders = candidates.joinToString(", ") { "?" }
-        val arguments = buildList {
-            addAll(candidates)
-            addAll(candidates)
-            add(limit)
-        }
         return termResults(
             database.query(
                 """
@@ -63,29 +113,77 @@ class DictionaryLookup(private val database: SqliteDatabase) {
                 ORDER BY d.priority ASC, t.score DESC, LENGTH(t.expression) ASC
                 LIMIT ?
                 """,
-                arguments,
+                buildList {
+                    addAll(candidates)
+                    addAll(candidates)
+                    add(limit)
+                },
             ),
         )
     }
 
-    fun search(query: String, limit: Int = 50): List<TermResult> {
-        val match = FtsText.buildQuery(query) ?: return emptyList()
-        return termResults(
-            database.query(
+    private fun queryDeinflected(forms: List<Deinflection>, limit: Int): List<TermResult> {
+        val formsByReading = LinkedHashMap<String, MutableList<Deinflection>>()
+        val values = LinkedHashSet<String>()
+        for (form in forms) {
+            for (variant in listOf(form.text, Kana.toHiragana(form.text), Kana.toKatakana(form.text))) {
+                values.add(variant)
+                val matches = formsByReading.getOrPut(Kana.toHiragana(variant)) { ArrayList() }
+                if (form !in matches) matches.add(form)
+            }
+        }
+        if (values.isEmpty()) return emptyList()
+
+        val seen = HashSet<Long>()
+        val results = ArrayList<TermResult>()
+        for (chunk in values.chunked(QUERY_CHUNK)) {
+            val placeholders = chunk.joinToString(", ") { "?" }
+            val rows = database.query(
                 """
                 SELECT t.id, t.dictionaryId, d.title, t.expression, t.reading, t.definitionTags, t.termTags,
                        t.rules, t.score, t.sequence, t.glossaryBlock, t.glossaryOffset, t.glossaryLength
-                FROM terms_fts
-                JOIN terms t ON t.id = terms_fts.rowid
+                FROM terms t
                 JOIN dictionaries d ON d.id = t.dictionaryId
-                WHERE terms_fts MATCH ? AND d.enabled = 1
+                WHERE d.enabled = 1
+                  AND (t.expression IN ($placeholders) OR t.reading IN ($placeholders))
                 ORDER BY d.priority ASC, t.score DESC, LENGTH(t.expression) ASC
-                LIMIT ?
                 """,
-                listOf(match, limit),
-            ),
+                chunk + chunk,
+            )
+            for (term in termResults(rows)) {
+                val matches = ArrayList<Deinflection>()
+                formsByReading[Kana.toHiragana(term.expression)]?.let { matches.addAll(it) }
+                formsByReading[Kana.toHiragana(term.reading)]?.let { matches.addAll(it) }
+                val form = matches.firstOrNull {
+                    DeinflectionTags.matches(term.rules, term.definitionTags, it.tags)
+                } ?: continue
+                if (seen.add(term.termId)) results.add(term.copy(deinflection = form))
+            }
+        }
+        results.sortWith(
+            compareByDescending<TermResult> { it.deinflection?.text?.length ?: 0 }
+                .thenByDescending { it.score }
+                .thenBy { it.expression.length }
+                .thenBy { it.expression },
         )
+        return results.take(limit)
     }
+
+    private fun queryFts(match: String, limit: Int): List<TermResult> = termResults(
+        database.query(
+            """
+            SELECT t.id, t.dictionaryId, d.title, t.expression, t.reading, t.definitionTags, t.termTags,
+                   t.rules, t.score, t.sequence, t.glossaryBlock, t.glossaryOffset, t.glossaryLength
+            FROM terms_fts
+            JOIN terms t ON t.id = terms_fts.rowid
+            JOIN dictionaries d ON d.id = t.dictionaryId
+            WHERE terms_fts MATCH ? AND d.enabled = 1
+            ORDER BY d.priority ASC, t.score DESC, LENGTH(t.expression) ASC
+            LIMIT ?
+            """,
+            listOf(match, limit),
+        ),
+    )
 
     fun kanji(character: String, limit: Int = 8): List<KanjiResult> {
         val value = character.trim()

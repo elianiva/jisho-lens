@@ -8,6 +8,8 @@ import com.elianiva.jisholens.dictionary.TermResult
 import com.elianiva.jisholens.dictionary.YomitanArchive
 import com.elianiva.jisholens.dictionary.YomitanImporter
 import com.elianiva.jisholens.dictionary.jdbc.JdbcSqliteDatabase
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -239,6 +241,17 @@ private fun printTerms(results: List<TermResult>, json: Boolean) {
                         put("score", term.score)
                         put("sequence", term.sequence)
                         put("glossary", term.glossary)
+                        put(
+                            "deinflection",
+                            term.deinflection?.let { deinflection ->
+                                buildJsonObject {
+                                    put("from", deinflection.originalText)
+                                    put("form", deinflection.text)
+                                    put("tags", buildJsonArray { deinflection.tags.forEach { add(JsonPrimitive(it)) } })
+                                    put("reasons", buildJsonArray { deinflection.reasons.forEach { add(JsonPrimitive(it)) } })
+                                }
+                            } ?: JsonNull,
+                        )
                     },
                 )
             }
@@ -259,6 +272,11 @@ private fun printTerms(results: List<TermResult>, json: Boolean) {
         ).joinToString(" · ")
         println(if (details.isEmpty()) head else "$head  ($details)")
         println("  ${term.glossaryText}")
+        term.deinflection?.let { deinflection ->
+            val reasons = deinflection.reasons.filter { it.isNotBlank() }
+            val chain = if (reasons.isEmpty()) "" else ": ${reasons.joinToString(" → ")}"
+            println("  deinflected from ${deinflection.originalText}$chain")
+        }
     }
 }
 

@@ -66,6 +66,7 @@ Build it with `./gradlew :cli:installDist`. The launcher lands at `cli/build/ins
 jisho-dict import JMdict_english.zip --db jisho_lens.db
 jisho-dict list --db jisho_lens.db
 jisho-dict lookup 食べる --db jisho_lens.db
+jisho-dict lookup 食べさせられた --db jisho_lens.db
 jisho-dict search eat --db jisho_lens.db
 jisho-dict kanji 食 --db jisho_lens.db
 jisho-dict remove JMdict --db jisho_lens.db
@@ -75,7 +76,9 @@ jisho-dict remove JMdict --db jisho_lens.db
 
 The database mirrors Yomitan's object stores instead of a normalized dictionary model: `dictionaries`, `terms`, `term_meta`, `kanji`, `kanji_meta`, `tags`, and `media`. Glossaries keep their original JSON, structured content included, in 4 MiB zlib-compressed blocks. Each term stores the block, offset, and length. Two FTS4 tables, `terms_fts` and `kanji_fts`, index expressions, readings, glosses, and kanji meanings. Japanese text is indexed one character per token, so partial input matches without an ICU tokenizer.
 
-Not done yet: deinflection, so 食べさせられた does not find 食べる. Prefix wildcard lookup and the Compose app are also still open. The released Flutter app keeps reading the old JMdict database from [the release page](https://github.com/elianiva/jisho-lens/releases/); the new database is for the rewrite.
+`lookup` and `search` deinflect conjugated input. For example, `lookup 食べさせられた` returns 食べる and prints the rule chain that reached it: past, passive/potential, and causative. An exact dictionary entry always comes first. The rules are ported from Jiten, which is Apache-2.0 licensed; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+Prefix wildcard lookup and the Compose app are still open. The released Flutter app keeps reading the old JMdict database from [the release page](https://github.com/elianiva/jisho-lens/releases/); the new database is for the rewrite.
 
 ## Usage
 
@@ -135,4 +138,4 @@ The dictionary tooling is a plain JVM project. Run `./gradlew :dictionary:test` 
 
 ## License
 
-[MIT License](LICENSE)
+[MIT License](LICENSE). The deconjugation rules and their Kotlin port are licensed under the Apache License, Version 2.0. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the attribution and the full license text.
