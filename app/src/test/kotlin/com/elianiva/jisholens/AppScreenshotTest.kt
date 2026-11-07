@@ -2,6 +2,8 @@ package com.elianiva.jisholens
 
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Rule
@@ -24,5 +26,11 @@ class AppScreenshotTest {
             compose.onAllNodesWithText("Import dictionary").fetchSemanticsNodes().isNotEmpty()
         }
         compose.onRoot().captureRoboImage("build/screenshots/app-first-run.png")
+
+        compose.onNodeWithText("Skip").performClick()
+        compose.waitUntil(10_000) {
+            compose.onAllNodesWithText("Take a picture").fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onRoot().captureRoboImage("build/screenshots/app-home.png")
     }
 }

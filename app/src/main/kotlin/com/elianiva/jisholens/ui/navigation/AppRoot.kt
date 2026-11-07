@@ -1,6 +1,7 @@
 package com.elianiva.jisholens.ui.navigation
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -31,6 +32,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.elianiva.jisholens.data.AppContainer
+import com.elianiva.jisholens.ui.components.DictionaryWarningBanner
 import com.elianiva.jisholens.ui.components.LogoBar
 import com.elianiva.jisholens.ui.screens.AboutScreen
 import com.elianiva.jisholens.ui.screens.DictionariesScreen
@@ -92,10 +94,17 @@ fun AppRoot(
             topBar = { if (!fullScreen) LogoBar() },
             bottomBar = {
                 if (!fullScreen) {
-                    AppBottomBar(
-                        navController = navController,
-                        currentDestination = destination,
-                    )
+                    Column {
+                        if (dictionaries.none { it.enabled }) {
+                            DictionaryWarningBanner(
+                                onClick = { navController.navigate(DictionariesRoute) },
+                            )
+                        }
+                        AppBottomBar(
+                            navController = navController,
+                            currentDestination = destination,
+                        )
+                    }
                 }
             },
         ) { padding ->
