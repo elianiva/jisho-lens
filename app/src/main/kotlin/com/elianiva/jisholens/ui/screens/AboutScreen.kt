@@ -12,7 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BugReport
-import androidx.compose.material.icons.outlined.OpenInNew
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -90,7 +90,7 @@ fun AboutScreen() {
             onClick = { open("https://github.com/elianiva/jisho-lens/blob/master/THIRD_PARTY_NOTICES.md") },
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Icon(Icons.Outlined.OpenInNew, contentDescription = null, modifier = Modifier.padding(end = 6.dp))
+            Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = null, modifier = Modifier.padding(end = 6.dp))
             Text("Licenses and attribution")
         }
         Text(

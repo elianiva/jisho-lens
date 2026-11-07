@@ -7,10 +7,12 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.net.Uri
 import android.os.Build
 import android.os.IBinder
+import android.Manifest
 import android.os.StatFs
 import android.provider.OpenableColumns
 import androidx.core.app.NotificationCompat
@@ -158,6 +160,12 @@ class ImportService : Service() {
     }
 
     private fun notify(message: String, detail: String?) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
         runCatching {
             NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, notification(message, detail))
         }
