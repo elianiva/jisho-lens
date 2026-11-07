@@ -1,6 +1,5 @@
 package com.elianiva.jisholens.dictionary
 
-import com.elianiva.jisholens.dictionary.jdbc.JdbcSqliteDatabase
 import java.nio.file.Files
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream

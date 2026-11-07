@@ -7,7 +7,6 @@ import com.elianiva.jisholens.dictionary.KanjiResult
 import com.elianiva.jisholens.dictionary.TermResult
 import com.elianiva.jisholens.dictionary.YomitanArchive
 import com.elianiva.jisholens.dictionary.YomitanImporter
-import com.elianiva.jisholens.dictionary.jdbc.JdbcSqliteDatabase
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray

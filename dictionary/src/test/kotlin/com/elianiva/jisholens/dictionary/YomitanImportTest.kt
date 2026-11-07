@@ -223,6 +223,67 @@ class YomitanImportTest {
         }
     }
 
+    @Test
+    fun `exposes tags term metadata media and styles`() {
+        Fixtures.database().use { database ->
+            Fixtures.archive(version3Files()).use { archive -> YomitanImporter(database).import(archive) }
+            val store = DictionaryStore(database)
+            val dictionary = store.list().single()
+
+            val tags = store.tags(dictionary.id).associateBy { it.name }
+            assertEquals(3, tags.size)
+            assertEquals("noun", tags.getValue("n").notes)
+            assertEquals("partOfSpeech", tags.getValue("v1").category)
+
+            val metadata = store.termMeta(listOf("食べる", "飲む")).associateBy { "${it.expression}:${it.mode}" }
+            assertEquals("100", metadata.getValue("食べる:freq").data)
+            assertEquals("\"three\"", metadata.getValue("飲む:freq").data)
+
+            val media = store.media(dictionary.id, "media/1.png")
+            assertNotNull(media)
+            assertEquals("image/png", media.mediaType)
+            assertEquals(2, media.width)
+            assertEquals(3, media.height)
+            assertEquals(24, media.data.size)
+            assertEquals("li { color: red; }", store.styles(dictionary.id))
+        }
+    }
+
+    @Test
+    fun `cancels an import and rolls back`() {
+        Fixtures.database().use { database ->
+            var progressCalls = 0
+            val importer = YomitanImporter(
+                database = database,
+                onProgress = { progressCalls++ },
+                shouldContinue = { progressCalls < 2 },
+            )
+            Fixtures.archive(version3Files()).use { archive ->
+                val error = runCatching { importer.import(archive) }.exceptionOrNull()
+                assertTrue(error is ImportCancelledException)
+            }
+            assertTrue(DictionaryStore(database).list().isEmpty())
+            val terms = database.query("SELECT COUNT(*) FROM terms").first().first() as Number
+            assertEquals(0, terms.toInt())
+        }
+    }
+
+    @Test
+    fun `scans a line with exact and deinflected words`() {
+        Fixtures.database().use { database ->
+            Fixtures.archive(version3Files()).use { archive -> YomitanImporter(database).import(archive) }
+            val lookup = DictionaryLookup(database)
+
+            val matches = lookup.scan("食べる人と飲む")
+            assertEquals(listOf("食べる", "飲む"), matches.map { it.surface })
+            assertEquals("食べる", matches.first().results.first().expression)
+
+            val conjugated = lookup.scan("食べさせられた")
+            assertEquals(listOf("食べさせられた"), conjugated.map { it.surface })
+            assertEquals("食べる", conjugated.first().results.first().expression)
+        }
+    }
+
     private fun count(database: SqliteDatabase, table: String): Int =
         (database.query("SELECT COUNT(*) FROM $table").first().first() as Number).toInt()
 

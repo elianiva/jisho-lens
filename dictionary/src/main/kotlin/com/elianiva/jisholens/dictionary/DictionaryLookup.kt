@@ -26,6 +26,14 @@ data class TermResult(
     val glossaryText: String get() = Glossary.text(glossary)
 }
 
+/** A word found by [DictionaryLookup.scan], with its range in the source text. */
+data class ScanMatch(
+    val surface: String,
+    val start: Int,
+    val end: Int,
+    val results: List<TermResult>,
+)
+
 /** One kanji row. */
 data class KanjiResult(
     val kanjiId: Long,
@@ -64,6 +72,74 @@ class DictionaryLookup(private val database: SqliteDatabase) {
         if (exact.isEmpty()) return candidates
         val seen = exact.mapTo(HashSet(exact.size)) { it.termId }
         return (exact + candidates.filter { seen.add(it.termId) }).take(limit)
+    }
+
+    /**
+     * Finds the words in [text] without a morphological analyzer.
+     *
+     * Every Japanese prefix up to [maxLength] code points is collected, then
+     * all prefixes are queried in one batch. Matches are selected greedily from
+     * left to right, longest first, so a line becomes a small list of words
+     * that a scan UI can show as chips.
+     */
+    fun scan(text: String, maxLength: Int = 12, limitPerWord: Int = 6): List<ScanMatch> {
+        if (text.isEmpty() || maxLength <= 0) return emptyList()
+
+        val rangesByCandidate = LinkedHashMap<String, MutableList<IntRange>>()
+        var start = 0
+        while (start < text.length) {
+            val codePoint = text.codePointAt(start)
+            if (!FtsText.isJapanese(codePoint)) {
+                start += Character.charCount(codePoint)
+                continue
+            }
+            var end = start
+            var length = 0
+            while (end < text.length && length < maxLength) {
+                val next = text.codePointAt(end)
+                if (!FtsText.isJapanese(next)) break
+                end += Character.charCount(next)
+                length++
+                rangesByCandidate.getOrPut(text.substring(start, end)) { ArrayList() }
+                    .add(start until end)
+            }
+            start += Character.charCount(codePoint)
+        }
+        if (rangesByCandidate.isEmpty()) return emptyList()
+
+        val candidates = rangesByCandidate.keys
+        val exact = exactCandidateResults(candidates, limitPerWord)
+        val deinflected = deinflectedCandidateResults(candidates, limitPerWord)
+
+        val byStart = HashMap<Int, MutableList<ScanMatch>>()
+        for ((candidate, ranges) in rangesByCandidate) {
+            val results = ArrayList<TermResult>(limitPerWord)
+            val seen = HashSet<Long>()
+            exact[candidate].orEmpty().forEach { term ->
+                if (seen.add(term.termId)) results.add(term)
+            }
+            deinflected[candidate].orEmpty().forEach { term ->
+                if (seen.add(term.termId) && results.size < limitPerWord) results.add(term)
+            }
+            if (results.isEmpty()) continue
+            for (range in ranges) {
+                byStart.getOrPut(range.first) { ArrayList() }
+                    .add(ScanMatch(candidate, range.first, range.last + 1, results.take(limitPerWord)))
+            }
+        }
+
+        val matches = ArrayList<ScanMatch>()
+        var index = 0
+        while (index < text.length) {
+            val best = byStart[index]?.maxByOrNull { it.end - it.start }
+            if (best == null) {
+                index += Character.charCount(text.codePointAt(index))
+            } else {
+                matches.add(best)
+                index = best.end
+            }
+        }
+        return matches
     }
 
     fun search(query: String, limit: Int = 50): List<TermResult> {
@@ -120,6 +196,90 @@ class DictionaryLookup(private val database: SqliteDatabase) {
                 },
             ),
         )
+    }
+
+    private fun exactCandidateResults(
+        candidates: Collection<String>,
+        limitPerWord: Int,
+    ): Map<String, List<TermResult>> {
+        val byHiragana = HashMap<String, MutableList<String>>(candidates.size)
+        for (candidate in candidates) {
+            byHiragana.getOrPut(Kana.toHiragana(candidate)) { ArrayList() }.add(candidate)
+        }
+        val result = HashMap<String, MutableList<TermResult>>()
+        for (term in queryTermsForValues(candidates, limitPerWord)) {
+            val keys = setOf(Kana.toHiragana(term.expression), Kana.toHiragana(term.reading))
+            for (key in keys) {
+                for (candidate in byHiragana[key].orEmpty()) {
+                    val entries = result.getOrPut(candidate) { ArrayList() }
+                    if (entries.none { it.termId == term.termId }) entries.add(term)
+                }
+            }
+        }
+        return result
+    }
+
+    private fun deinflectedCandidateResults(
+        candidates: Collection<String>,
+        limitPerWord: Int,
+    ): Map<String, List<TermResult>> {
+        val formsByCandidate = LinkedHashMap<String, List<Deinflection>>()
+        val values = LinkedHashSet<String>()
+        for (candidate in candidates) {
+            val forms = deinflector.deinflect(candidate)
+                .filter { DeinflectionTags.isDictionaryForm(it.tags) }
+            if (forms.isEmpty()) continue
+            formsByCandidate[candidate] = forms
+            for (form in forms) {
+                values.add(form.text)
+                values.add(Kana.toHiragana(form.text))
+                values.add(Kana.toKatakana(form.text))
+            }
+        }
+        if (values.isEmpty()) return emptyMap()
+
+        val terms = queryTermsForValues(values, limitPerWord)
+        val result = HashMap<String, MutableList<TermResult>>()
+        for ((candidate, forms) in formsByCandidate) {
+            val entries = result.getOrPut(candidate) { ArrayList() }
+            for (term in terms) {
+                val form = forms.firstOrNull { candidateForm ->
+                    (Kana.toHiragana(candidateForm.text) == Kana.toHiragana(term.expression) ||
+                        Kana.toHiragana(candidateForm.text) == Kana.toHiragana(term.reading)) &&
+                        DeinflectionTags.matches(term.rules, term.definitionTags, candidateForm.tags)
+                } ?: continue
+                if (entries.none { it.termId == term.termId }) {
+                    entries.add(term.copy(deinflection = form))
+                }
+                if (entries.size >= limitPerWord) break
+            }
+        }
+        return result
+    }
+
+    /** One query per chunk for a set of expression or reading values. */
+    private fun queryTermsForValues(values: Collection<String>, limitPerWord: Int): List<TermResult> {
+        if (values.isEmpty()) return emptyList()
+        val limit = (values.size * limitPerWord).coerceAtLeast(64)
+        val result = LinkedHashMap<Long, TermResult>()
+        for (chunk in values.chunked(QUERY_CHUNK)) {
+            val placeholders = chunk.joinToString(", ") { "?" }
+            val rows = database.query(
+                """
+                SELECT t.id, t.dictionaryId, d.title, t.expression, t.reading, t.definitionTags, t.termTags,
+                       t.rules, t.score, t.sequence, t.glossaryBlock, t.glossaryOffset, t.glossaryLength
+                FROM terms t
+                JOIN dictionaries d ON d.id = t.dictionaryId
+                WHERE d.enabled = 1
+                  AND (t.expression IN ($placeholders) OR t.reading IN ($placeholders))
+                ORDER BY d.priority ASC, t.score DESC, LENGTH(t.expression) ASC
+                LIMIT ?
+                """,
+                chunk + chunk + listOf(limit),
+            )
+            termResults(rows).forEach { term -> result.putIfAbsent(term.termId, term) }
+        }
+        return result.values.toList()
     }
 
     private fun queryDeinflected(forms: List<Deinflection>, limit: Int): List<TermResult> {

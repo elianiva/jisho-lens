@@ -1,12 +1,11 @@
-package com.elianiva.jisholens.dictionary.jdbc
+package com.elianiva.jisholens.dictionary
 
-import com.elianiva.jisholens.dictionary.SqliteDatabase
 import java.io.File
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.PreparedStatement
 
-/** [SqliteDatabase] backed by xerial's JDBC driver, used by the CLI. */
+/** Test-only [SqliteDatabase] backed by xerial's JDBC driver. */
 class JdbcSqliteDatabase private constructor(private val connection: Connection) : SqliteDatabase, AutoCloseable {
     private var transactionDepth = 0
 

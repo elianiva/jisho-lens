@@ -10,6 +10,8 @@ data class ImportSummary(
     val durationMillis: Long,
 )
 
+class ImportCancelledException : Exception("Dictionary import cancelled")
+
 /**
  * Imports a Yomitan archive into the SQLite schema.
  *
@@ -25,6 +27,7 @@ class YomitanImporter(
     private val database: SqliteDatabase,
     private val onProgress: (String) -> Unit = {},
     private val batchSize: Int = 2_000,
+    private val shouldContinue: () -> Boolean = { true },
 ) {
     private val store = DictionaryStore(database)
 
@@ -33,6 +36,7 @@ class YomitanImporter(
         val index = archive.readIndex()
         val previous = store.findByTitle(index.title)
         onProgress("Importing ${index.title} (format ${index.formatVersion})")
+        checkCancelled()
 
         val counts = database.transaction {
             if (previous != null) {
@@ -119,7 +123,9 @@ class YomitanImporter(
     private fun importTags(archive: YomitanArchive, dictionaryId: Long, index: YomitanIndex): Int {
         val tags = ArrayList<YomitanTag>()
         archive.bankNames("tag_bank_").forEach { bank ->
+            checkCancelled()
             archive.forEachBankRow(bank) { row ->
+                checkCancelled()
                 YomitanParsing.tag(row)?.let { tags.add(it) }
             }
         }
@@ -148,8 +154,10 @@ class YomitanImporter(
 
         GlossaryBlockWriter(database, dictionaryId).use { glossaries ->
             for (bank in archive.bankNames("term_bank_")) {
+                checkCancelled()
                 var bankCount = 0
                 archive.forEachBankRow(bank) { row ->
+                    checkCancelled()
                     val expression = row.string(0)
                     if (!expression.isNullOrEmpty()) {
                         val reading = row.string(1)?.ifEmpty { expression } ?: expression
@@ -211,8 +219,10 @@ class YomitanImporter(
         var nextId = nextId("term_meta")
         var total = 0
         for (bank in archive.bankNames("term_meta_bank_")) {
+            checkCancelled()
             var bankCount = 0
             archive.forEachBankRow(bank) { row ->
+                checkCancelled()
                 val expression = row.string(0)
                 val mode = row.string(1)
                 if (expression != null && mode != null) {
@@ -235,8 +245,10 @@ class YomitanImporter(
         var nextId = nextId("kanji")
         var total = 0
         for (bank in archive.bankNames("kanji_bank_")) {
+            checkCancelled()
             var bankCount = 0
             archive.forEachBankRow(bank) { row ->
+                checkCancelled()
                 val character = row.string(0)
                 if (!character.isNullOrEmpty()) {
                     val meaningsJson = if (v3 && row.isArray(4)) row.raw(4) else arrayFrom(row, 4)
@@ -276,8 +288,10 @@ class YomitanImporter(
         var nextId = nextId("kanji_meta")
         var total = 0
         for (bank in archive.bankNames("kanji_meta_bank_")) {
+            checkCancelled()
             var bankCount = 0
             archive.forEachBankRow(bank) { row ->
+                checkCancelled()
                 val character = row.string(0)
                 val mode = row.string(1)
                 if (character != null && mode != null) {
@@ -299,6 +313,7 @@ class YomitanImporter(
         val batch = MediaBatch(batchSize, dictionaryId)
         var nextId = nextId("media")
         for (name in names) {
+            checkCancelled()
             val bytes = archive.readBytes(name)
             val size = ImageSize.read(bytes)
             batch.add(nextId++, name, mimeType(name), size?.first, size?.second, bytes)
@@ -307,6 +322,10 @@ class YomitanImporter(
         flush(batch)
         onProgress("Imported ${names.size} media files")
         return names.size
+    }
+
+    private fun checkCancelled() {
+        if (!shouldContinue()) throw ImportCancelledException()
     }
 
     private fun flush(batch: ColumnBatch) {
