@@ -257,13 +257,15 @@ private fun ImportStatus(state: ImportState, onCancel: () -> Unit) {
         ) {
             Column(Modifier.fillMaxWidth().padding(12.dp)) {
                 Text("Copying ${state.name}", style = MaterialTheme.typography.bodyMedium)
-                LinearProgressIndicator(
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    progress = {
-                        val total = state.total
-                        if (total != null && total > 0) state.bytes.toFloat() / total.toFloat() else 0f
-                    },
-                )
+                val total = state.total
+                if (total != null && total > 0) {
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        progress = { state.bytes.toFloat() / total.toFloat() },
+                    )
+                } else {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
+                }
             }
         }
         is ImportState.Importing -> Surface(

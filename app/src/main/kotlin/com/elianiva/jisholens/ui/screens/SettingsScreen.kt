@@ -51,7 +51,7 @@ fun SettingsScreen(
         item { SectionHeader("Appearance") }
         item {
             SettingsRow(
-                icon = { Icon(Icons.Outlined.Palette, contentDescription = null) },
+                icon = { Icon(Icons.Outlined.Palette, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface) },
                 title = "Theme",
                 value = settings.theme.label,
                 onClick = { showTheme = true },
@@ -60,7 +60,7 @@ fun SettingsScreen(
         item { SectionHeader("Data") }
         item {
             SettingsRow(
-                icon = { Icon(Icons.Outlined.Translate, contentDescription = null) },
+                icon = { Icon(Icons.Outlined.Translate, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface) },
                 title = "Dictionaries",
                 value = if (dictionaries.isEmpty()) "None imported" else "${dictionaries.size} imported",
                 onClick = onOpenDictionaries,
@@ -160,6 +160,6 @@ private fun SettingsRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null)
+        Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
     }
 }
