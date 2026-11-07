@@ -5,60 +5,87 @@
   </picture>
 </div>
 
-Jisho Lens is an app that allows you to scan Japanese words from a picture and search for its meaning from a dictionary. In a nutshell, think of it as a Google Lens but instead of searching from Google, it searches from a local dictionary.
+Jisho Lens is an Android app that scans Japanese words from a picture and looks them up in local dictionaries. Scan a page, tap a word, and read the entry. Nothing leaves the device.
 
-## Motivation
+## Status
 
-> It's a bit long, bare with me. Or just ignore it if you're not interested lol
+The native app lives in `app/` and uses Kotlin, Jetpack Compose, and a Yomitan-compatible SQLite database. The Flutter app in `jisho_lens/` is the released 1.x version. Keep it installed while the native app is verified, or uninstall it when you switch.
 
-This app was made mainly because I got frustrated whenever I see a word on my phone and I don't know what it means. I mean, just Google it, right? No. You see, Japanese has multiple writing system, one of them is kanji. In order for me to be able to Google it, I need to know how to write it. The thing with Kanji, unlike latin alphabet, is that you can't just see a letter and just be able to write it down using a keyboard.
+- Preview package: `com.elianiva.preview`
+- Stable package: `com.elianiva`
+- Minimum Android version: 8.0 (API 26)
 
-Now, imagine this scenario. You're a non native English speaker, you came a cross the word _"depression"_, you don't know what it means, easy, just Google it up innit, just write _"depression"_ on Google and you're done. Now how about Japanese? Imagine you're not a native Japanese speaker, you came across a word "鬱" (which, in small size almost looks like a block of square, at least to me). How do you supposed to know if it's read as うつ? You don't. That's why I made this app to try to solve this problem.
-
-I use this awesome browser extension called [Yomichan](https://github.com/FooSoft/yomichan) which basically works like a magic wand. You just hover your cursor over an unknown word and it will pull up a dictionary entry. Unfortunately it only works on browser. This is also another reason why I made this app, I want something like this to be available on mobile.
-
-I found this cool project the other day called [Jidoujisho](https://github.com/lrorpilla/jidoujisho) which is an app that enables immersion learning. It's a really cool project and I like it. Why don't I just use it? Well, it's more fun to make it yourself ¯\\\_(ツ)\_/¯. Jisho Lens is basically a fraction of that project and I prefer having simpler app that does one thing that suits my need. I recommend you to at least check it out, it may work better for you because it has tons of other features ;)
+The native app does not read the old Flutter database. Import a Yomitan `.zip` dictionary instead.
 
 ## Features
 
-Here are some features of this app:
-
-- [x] Dark mode / Light mode
-- [x] Scans a picture for words
-- [x] Search for words from a dictionary using a keyword with Full Text Search support
-- [x] Scans a picture by sharing it to this app ([see here for details](#usage))
-- [ ] Add dictionary entry to Anki (planned)
-- [ ] Scan words from current screen using quick settings tile (planned)
-- [x] JMdict dataset
-- [ ] KANJIDIC2 dataset (planned)
-- [ ] Tatoeba dataset (planned)
-- [ ] Online version? You will no longer need to download the entire dataset but requires internet connection and I have to host the server :p
+- Scan from the camera or the photo picker.
+- Tap a recognized line, then a dictionary word, to open its entry.
+- Search Japanese words, kanji, kana, and English glosses.
+- Deinflect conjugated input, so 食べさせられた finds 食べる.
+- Import several Yomitan dictionaries, enable them, reorder them, and remove them.
+- Show tags, glosses, cross references, images, and frequency data from the dictionary.
+- Light, dark, and system themes, with dynamic color on Android 12 and later.
+- Share an image to the app, or select text in another app and use the Look up action.
+- No storage permission. The app uses the system file picker and a foreground service for imports.
 
 ## Limitations
 
-There are some limitations of this app:
+- The native app is a preview. It has no signed stable release yet.
+- Vertical manga text and stylized fonts are harder for ML Kit. Crop and zoom the image when recognition is poor.
+- Screen scanning from a Quick Settings tile and the accessibility overlay are not implemented.
+- Anki export, history, bookmarks, and a kanji screen are not part of this version.
+- The app ships no dictionary. Jitendex and JMdict are available from their publishers and are licensed under CC BY-SA 4.0.
 
-- It only works on Android (specifically Android ) since I don't have Apple devices to test it on.
-- You need to take the image manually and remove it afterwards to scan the current screen for now, but once I implemented the quick settings tile it should be possible to let Jisho Lens handle the image deletion when you're done automatically.
-- The app size might grow a bit in the future when more datasets are added. For now it's roughly ~26MB for the app size and ~100MB for the JMdict database. I'm planning to find a way to modularise the database so that e.g if you just want JMdict, you can just download it by itself without having to download the rest of the data.
-- Query speed might be a bit slow since I'm not an SQL guru that can optimise the query/database to be faster than light. I'm hoping the situation will get better as the app gets more developed.
-- The image might get false positive of recognised texts (icons got recognised as texts) because Google ML Kit is not perfect, but it should be good enough most of the time.
+## Tech stack
 
-## Tech Stack
+- Kotlin 2.4 and Jetpack Compose with Material 3
+- ViewModel and StateFlow for screen state
+- Navigation Compose with type-safe routes
+- DataStore for settings
+- `androidx.sqlite` bundled SQLite behind the `:dictionary` interface
+- FTS4 with `unicode61` for search
+- ML Kit Japanese text recognition
+- Gradle 8.14.4 and AGP 8.13.2
 
-The repository holds two things. `jisho_lens/` is the Flutter app that is currently released. `dictionary/` and `cli/` are the Kotlin dictionary tooling for the Compose rewrite, which imports Yomitan dictionaries and builds the SQLite database the new app will query.
+## Build
 
-The current app uses:
+You need JDK 17 and Android SDK platform 36.
 
-- [Flutter](https://flutter.dev) - The main framework
-- [Riverpod](https://riverpod.dev) - State management
-- [Google ML Kit](https://developers.google.com/ml-kit) - Used as the text recognition engine
-- [Hive](https://docs.hivedb.dev/#/) - A persistent key-value store
-- [Sqflite](https://pub.dev/packages/sqflite) - SQLite database driver for Flutter
+```sh
+./gradlew :app:assemblePreviewDebug
+./gradlew :dictionary:test :app:testPreviewDebugUnitTest
+```
+
+Install the preview on a connected device:
+
+```sh
+./gradlew :app:installPreviewDebug
+```
+
+Build a minified, unsigned release APK:
+
+```sh
+./gradlew :app:assemblePreviewRelease
+```
+
+The preview flavor uses `com.elianiva.preview`. The stable flavor uses `com.elianiva`.
+
+### Screenshot tests
+
+The Compose screenshot tests render on the JVM with Robolectric and Roborazzi. Record them with:
+
+```sh
+./gradlew :app:testPreviewDebugUnitTest \
+  -Proborazzi.test.record=true \
+  --tests com.elianiva.jisholens.ScreenshotTest
+```
+
+The images land in `app/build/screenshots`.
 
 ## Dictionary tooling
 
-`cli` imports Yomitan dictionary archives into a single SQLite file. It accepts every bank a Yomitan dictionary can hold: terms, kanji, term metadata (frequency and pitch), kanji metadata, tags, media, and `styles.css`.
+`cli` imports Yomitan dictionary archives into one SQLite file. It accepts every bank a Yomitan dictionary can hold: terms, kanji, term metadata (frequency and pitch), kanji metadata, tags, media, and `styles.css`.
 
 Build it with `./gradlew :cli:installDist`. The launcher lands at `cli/build/install/jisho-dict/bin/jisho-dict`.
 
@@ -74,68 +101,24 @@ jisho-dict remove JMdict --db jisho_lens.db
 
 `import` accepts several archives at once and an `--alias` name. `--json` prints machine-readable output and `--vacuum` compacts the file after importing. Importing a dictionary whose title already exists replaces it and keeps its priority, alias, and enabled state.
 
-The database mirrors Yomitan's object stores instead of a normalized dictionary model: `dictionaries`, `terms`, `term_meta`, `kanji`, `kanji_meta`, `tags`, and `media`. Glossaries keep their original JSON, structured content included, in 4 MiB zlib-compressed blocks. Each term stores the block, offset, and length. Two FTS4 tables, `terms_fts` and `kanji_fts`, index expressions, readings, glosses, and kanji meanings. Japanese text is indexed one character per token, so partial input matches without an ICU tokenizer.
-
-`lookup` and `search` deinflect conjugated input. For example, `lookup 食べさせられた` returns 食べる and prints the rule chain that reached it: past, passive/potential, and causative. An exact dictionary entry always comes first. The rules are ported from Jiten, which is Apache-2.0 licensed; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-
-Prefix wildcard lookup and the Compose app are still open. The released Flutter app keeps reading the old JMdict database from [the release page](https://github.com/elianiva/jisho-lens/releases/); the new database is for the rewrite.
+The database mirrors Yomitan's object stores: `dictionaries`, `terms`, `term_meta`, `kanji`, `kanji_meta`, `tags`, and `media`. Glossaries keep their original JSON, structured content included, in 4 MiB zlib-compressed blocks. Each term stores the block, offset, and length. FTS4 indexes expressions, readings, glosses, and kanji meanings. Japanese text is indexed one character per token, so partial input matches without an ICU tokenizer.
 
 ## Usage
 
-You must first import a dictionary to use this app. Just go to the settings page and press the `Import Database` menu, you should be able to pick the database file that you can download from [the release page](https://github.com/elianiva/jisho-lens/releases/). I made the dictionary separated so that I can update it more frequently without having to reinstall the app everytime. If you don't import the dictionary, you won't be able to use any of the features and will get a warning like this:
+1. Install the preview or stable build.
+2. Download a Yomitan dictionary archive such as Jitendex or JMdict.
+3. Open Settings, then Dictionaries, then the add button.
+4. Pick the `.zip` file. The import runs in a foreground service and can be cancelled.
+5. Scan a picture or search for a word.
 
-<img src="https://i.ibb.co/jT0fYnK/warning.png" width="600" />
-
-After you import the dictionary, everything should be self explanatory, but in case it wasn't clear enough, here are some videos demonstrating how to use this app (It's hosted on streamable because I don't want to attach it in the readme, it's definitely not me being too lazy to attach them here, no).
-
-- [Searching for words using keyword](https://streamable.com/k0q2yr)
-- [Scan a word](https://streamable.com/y32jxq)
-- [Quick share shortcut](https://streamable.com/2c1vf9) - This is how I use it most of the time
-
-## Screenshots
-
-<details>
-<summary>Home Page</summary>
-
-| Dark mode                                                                         | Light mode                                                                         |
-| --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| <kbd> <img src="https://i.ibb.co/M7RY15P/homepage-dark.png" width="240" /> </kbd> | <kbd> <img src="https://i.ibb.co/FVQqX2y/homepage-light.png" width="240" /> </kbd> |
-
-</details>
-
-<details>
-<summary>Search Page</summary>
-
-| Dark mode                                                                       | Light mode                                                                       |
-| ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| <kbd> <img src="https://i.ibb.co/tJswpBK/search-dark.png" width="240" /> </kbd> | <kbd> <img src="https://i.ibb.co/0VNXv38/search-light.png" width="240" /> </kbd> |
-
-</details>
-
-<details>
-<summary>Settings page</summary>
-
-| Dark mode                                                                         | Light mode                                                                         |
-| --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| <kbd> <img src="https://i.ibb.co/hXv8P9P/settings-dark.png" width="240" /> </kbd> | <kbd> <img src="https://i.ibb.co/j5rD9rk/settings-light.png" width="240" /> </kbd> |
-
-</details>
-
-<details>
-<summary>Scan page</summary>
-
-| Dark mode                                                                       | Light mode                                                                       |
-| ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| <kbd> <img src="https://i.ibb.co/9G8BBVp/scan-dark.png" width="240" /> </kbd>   | <kbd> <img src="https://i.ibb.co/bgg5yD5/scan-light.png" width="240" /> </kbd>   |
-| <kbd> <img src="https://i.ibb.co/gw38JRk/scan-2-dark.png" width="240" /> </kbd> | <kbd> <img src="https://i.ibb.co/ZB80nFM/scan-2-light.png" width="240" /> </kbd> |
-
-</details>
+The old Flutter release and its `jmdict.db` file are not compatible with the native app.
 
 ## Development
 
-It's just a standard Flutter project, you can develop it just like any other Flutter app using [Android Studio](https://developer.android.com/studio) or [Visual Studio Code](https://code.visualstudio.com/). If this is the first time you're using Flutter, you can follow [the official instructions](https://docs.flutter.dev/get-started/install) to set it up.
-The dictionary tooling is a plain JVM project. Run `./gradlew :dictionary:test` for its tests and `./gradlew build` for everything. Tests do not need a device or an emulator.
+The Android app is a standard Gradle module. Open the repository in Android Studio, or use the commands above. The dictionary tests run on the JVM and need no device.
+
+The `:dictionary` module is plain Kotlin/JVM. It has no Android imports. The Android app supplies a `SqliteDatabase` adapter over `androidx.sqlite`.
 
 ## License
 
-[MIT License](LICENSE). The deconjugation rules and their Kotlin port are licensed under the Apache License, Version 2.0. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the attribution and the full license text.
+[MIT License](LICENSE). The deconjugation rules and their Kotlin port are licensed under the Apache License, Version 2.0. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for attribution and the full license text.

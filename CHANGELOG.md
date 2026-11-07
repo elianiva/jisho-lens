@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## Unreleased
+
+### Features
+
+* add the native Kotlin and Jetpack Compose app under `app/`
+* import Yomitan dictionaries, with tags, media, frequency data, and deinflected lookup
+* add search, scan, dictionary management, sharing, and process-text lookup
+* use `com.elianiva` as the stable application ID and `com.elianiva.preview` for previews
+
+### Notes
+
+* the old Flutter app and its `jmdict.db` database are not compatible with the native app
+
 ## 1.1.0 (2023-10-08)
 
 

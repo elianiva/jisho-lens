@@ -1,15 +1,33 @@
 #!/usr/bin/env bash
-# The Gradle build needs a JDK; the base orb image does not ship one.
+# The Gradle build needs a JDK and the Android SDK.
 set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/android-sdk}}"
 
 if ! command -v java >/dev/null 2>&1; then
     sudo apt-get update -qq
     sudo apt-get install -y -qq openjdk-17-jdk-headless
 fi
 
+if [ ! -d "$SDK_ROOT/platforms/android-36" ]; then
+    mkdir -p "$SDK_ROOT/cmdline-tools"
+    curl -fsSL "https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip" -o /tmp/android-cmdline-tools.zip
+    unzip -q -o /tmp/android-cmdline-tools.zip -d "$SDK_ROOT/cmdline-tools"
+    if [ -d "$SDK_ROOT/cmdline-tools/cmdline-tools" ]; then
+        rm -rf "$SDK_ROOT/cmdline-tools/latest"
+        mv "$SDK_ROOT/cmdline-tools/cmdline-tools" "$SDK_ROOT/cmdline-tools/latest"
+    fi
+    yes | "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK_ROOT" --licenses >/dev/null
+    "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK_ROOT" \
+        "platform-tools" "platforms;android-36" "build-tools;36.0.0" >/dev/null
+fi
+
+printf 'sdk.dir=%s\n' "$SDK_ROOT" > "$REPO_ROOT/local.properties"
+
 # Android SDK plus a software-emulated Android 30 AVD. The emulator runs without
 # KVM, so it is slow; the download is ~7 GB. Opt in per thread:
 #   ANDROID_EMULATOR=1 bash .agents/setup
 if [ "${ANDROID_EMULATOR:-0}" = "1" ]; then
-    bash "$(dirname "$0")/android-emulator.sh" install
+    ANDROID_HOME="$SDK_ROOT" bash "$(dirname "$0")/android-emulator.sh" install
 fi
