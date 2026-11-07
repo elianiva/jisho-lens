@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# The Gradle build needs a JDK; the base orb image does not ship one.
+set -euo pipefail
+
+if ! command -v java >/dev/null 2>&1; then
+    sudo apt-get update -qq
+    sudo apt-get install -y -qq openjdk-17-jdk-headless
+fi

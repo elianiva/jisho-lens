@@ -46,9 +46,9 @@ There are some limitations of this app:
 
 ## Tech Stack
 
-This project is split into two parts: the android app and a small tool to generate the database from a dictionary.
+The repository holds two things. `jisho_lens/` is the Flutter app that is currently released. `dictionary/` and `cli/` are the Kotlin dictionary tooling for the Compose rewrite, which imports Yomitan dictionaries and builds the SQLite database the new app will query.
 
-Here are some of the framework/library used for the android app.
+The current app uses:
 
 - [Flutter](https://flutter.dev) - The main framework
 - [Riverpod](https://riverpod.dev) - State management
@@ -56,7 +56,26 @@ Here are some of the framework/library used for the android app.
 - [Hive](https://docs.hivedb.dev/#/) - A persistent key-value store
 - [Sqflite](https://pub.dev/packages/sqflite) - SQLite database driver for Flutter
 
-Please refer to [DbGenerator/README.md](https://github.com/elianiva/jisho-lens/blob/master/DbGenerator/README.md) for more details.
+## Dictionary tooling
+
+`cli` imports Yomitan dictionary archives into a single SQLite file. It accepts every bank a Yomitan dictionary can hold: terms, kanji, term metadata (frequency and pitch), kanji metadata, tags, media, and `styles.css`.
+
+Build it with `./gradlew :cli:installDist`. The launcher lands at `cli/build/install/jisho-dict/bin/jisho-dict`.
+
+```sh
+jisho-dict import JMdict_english.zip --db jisho_lens.db
+jisho-dict list --db jisho_lens.db
+jisho-dict lookup 食べる --db jisho_lens.db
+jisho-dict search eat --db jisho_lens.db
+jisho-dict kanji 食 --db jisho_lens.db
+jisho-dict remove JMdict --db jisho_lens.db
+```
+
+`import` accepts several archives at once and an `--alias` name. `--json` prints machine-readable output and `--vacuum` compacts the file after importing. Importing a dictionary whose title already exists replaces it and keeps its priority, alias, and enabled state.
+
+The database mirrors Yomitan's object stores instead of a normalized dictionary model: `dictionaries`, `terms`, `term_meta`, `kanji`, `kanji_meta`, `tags`, and `media`. Glossaries keep their original JSON, structured content included, in 4 MiB zlib-compressed blocks. Each term stores the block, offset, and length. Two FTS4 tables, `terms_fts` and `kanji_fts`, index expressions, readings, glosses, and kanji meanings. Japanese text is indexed one character per token, so partial input matches without an ICU tokenizer.
+
+Not done yet: deinflection, so 食べさせられた does not find 食べる. Prefix wildcard lookup and the Compose app are also still open. The released Flutter app keeps reading the old JMdict database from [the release page](https://github.com/elianiva/jisho-lens/releases/); the new database is for the rewrite.
 
 ## Usage
 
@@ -112,7 +131,7 @@ After you import the dictionary, everything should be self explanatory, but in c
 ## Development
 
 It's just a standard Flutter project, you can develop it just like any other Flutter app using [Android Studio](https://developer.android.com/studio) or [Visual Studio Code](https://code.visualstudio.com/). If this is the first time you're using Flutter, you can follow [the official instructions](https://docs.flutter.dev/get-started/install) to set it up.
-Although, if you want to develop any features related to the dictionary, you need to generate the database first by following the instruction in [DbGenerator/README.md](./DbGenerator/README.md).
+The dictionary tooling is a plain JVM project. Run `./gradlew :dictionary:test` for its tests and `./gradlew build` for everything. Tests do not need a device or an emulator.
 
 ## License
 
