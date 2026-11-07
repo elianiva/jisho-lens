@@ -7,6 +7,7 @@ import com.elianiva.jisholens.data.DictionaryRepository
 import com.elianiva.jisholens.data.SearchQuery
 import com.elianiva.jisholens.data.SettingsRepository
 import com.elianiva.jisholens.domain.Entry
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -67,21 +68,19 @@ class SearchViewModel(
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             _state.update { it.copy(isLoading = true, hasSearched = true, error = null, results = emptyList()) }
-            runCatching {
+            try {
                 val current = settings.settings.first()
-                if (SearchQuery.useFullText(query, current.fullTextSearch)) {
+                val entries = if (SearchQuery.useFullText(query, current.fullTextSearch)) {
                     repository.search(query)
                 } else {
                     repository.lookup(query)
                 }
-            }.onSuccess { entries ->
                 _state.update { it.copy(isLoading = false, results = entries) }
-            }.onFailure { error ->
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
                 _state.update {
-                    it.copy(
-                        isLoading = false,
-                        error = error.message ?: "The search failed",
-                    )
+                    it.copy(isLoading = false, error = error.message ?: "The search failed")
                 }
             }
         }

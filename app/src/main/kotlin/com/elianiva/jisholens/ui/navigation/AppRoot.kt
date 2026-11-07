@@ -60,6 +60,7 @@ private val destinations = listOf(
 fun AppRoot(
     container: AppContainer,
     pendingScanPath: String?,
+    onScanConsumed: () -> Unit = {},
 ) {
     val settings by container.settings.settings.collectAsStateWithLifecycle(initialValue = null)
     val dictionaries by container.dictionaries.collectAsStateWithLifecycle()
@@ -87,7 +88,10 @@ fun AppRoot(
             destination?.hasRoute<OnboardingRoute>() == true
 
         LaunchedEffect(pendingScanPath) {
-            pendingScanPath?.let { navController.navigate(ScanRoute(it)) }
+            pendingScanPath?.let {
+                navController.navigate(ScanRoute(it))
+                onScanConsumed()
+            }
         }
 
         Scaffold(

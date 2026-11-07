@@ -47,6 +47,12 @@ class LookupActivity : ComponentActivity() {
         }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        recreate()
+    }
+
     companion object {
         const val EXTRA_LOOKUP_TEXT = "lookup_text"
     }

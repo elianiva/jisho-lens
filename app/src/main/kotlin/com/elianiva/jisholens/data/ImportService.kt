@@ -23,6 +23,7 @@ import com.elianiva.jisholens.JishoLensApp
 import com.elianiva.jisholens.MainActivity
 import com.elianiva.jisholens.R
 import com.elianiva.jisholens.dictionary.ImportCancelledException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -81,6 +82,8 @@ class ImportService : Service() {
             controller.update(ImportState.Done(summary))
             container.refreshDictionaries()
             notify("Import complete", summary.title)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (_: ImportCancelledException) {
             controller.update(ImportState.Cancelled)
         } catch (error: Exception) {

@@ -28,7 +28,11 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         handleIntent(intent)
         setContent {
-            AppRoot(container = container, pendingScanPath = pendingScanPath.value)
+            AppRoot(
+                container = container,
+                pendingScanPath = pendingScanPath.value,
+                onScanConsumed = { pendingScanPath.value = null },
+            )
         }
     }
 

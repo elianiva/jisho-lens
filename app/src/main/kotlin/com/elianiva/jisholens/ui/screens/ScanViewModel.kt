@@ -10,6 +10,7 @@ import com.elianiva.jisholens.data.OcrEngine
 import com.elianiva.jisholens.data.TextLineBox
 import com.elianiva.jisholens.domain.Entry
 import com.elianiva.jisholens.domain.ScanWord
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -47,13 +48,13 @@ class ScanViewModel(
     fun load() {
         viewModelScope.launch {
             _state.update { it.copy(loading = true, error = null) }
-            runCatching {
+            try {
                 val bitmap = withContext(Dispatchers.IO) { ImageLoader.load(context, imagePath) }
                 val lines = ocr.recognize(bitmap)
-                bitmap to lines
-            }.onSuccess { (bitmap, lines) ->
                 _state.value = ScanUiState(bitmap = bitmap, lines = lines, loading = false)
-            }.onFailure { error ->
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
                 _state.update { it.copy(loading = false, error = error.message ?: "The image could not be scanned") }
             }
         }
@@ -79,7 +80,13 @@ class ScanViewModel(
             it.copy(selectedLine = index, words = emptyList(), selectedWord = -1, entries = emptyList())
         }
         lineJob = viewModelScope.launch {
-            val words = runCatching { repository.scan(line.text) }.getOrDefault(emptyList())
+            val words = try {
+                repository.scan(line.text)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                emptyList()
+            }
             val selected = words.indexOfFirst { charIndex in it.start until it.end }
                 .takeIf { it >= 0 }
                 ?: words.indexOfFirst { it.start >= charIndex }.takeIf { it >= 0 }
@@ -102,8 +109,13 @@ class ScanViewModel(
 
     fun searchLink(text: String) {
         viewModelScope.launch {
-            val entries = runCatching { repository.lookup(text).ifEmpty { repository.search(text) } }
-                .getOrDefault(emptyList())
+            val entries = try {
+                repository.lookup(text).ifEmpty { repository.search(text) }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                emptyList()
+            }
             _state.update { it.copy(entries = entries, selectedWord = -1) }
         }
     }
