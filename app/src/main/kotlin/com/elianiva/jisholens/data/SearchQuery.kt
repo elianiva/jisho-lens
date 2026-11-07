@@ -2,7 +2,7 @@ package com.elianiva.jisholens.data
 
 object SearchQuery {
     /**
-     * English glosses always use FTS, matching the Flutter app. Japanese uses
+     * English glosses always use FTS, matching the 1.x app. Japanese uses
      * exact lookup unless the full-text setting is on.
      */
     fun useFullText(query: String, fullTextSetting: Boolean): Boolean =

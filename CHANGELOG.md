@@ -13,7 +13,7 @@ All notable changes to this project will be documented in this file. See [standa
 
 ### Notes
 
-* the old Flutter app and its `jmdict.db` database are not compatible with the native app
+* the 1.x app and its `jmdict.db` database are not compatible with the native app
 
 ## 1.1.0 (2023-10-08)
 

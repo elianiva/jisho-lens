@@ -9,13 +9,13 @@ Jisho Lens is an Android app that scans Japanese words from a picture and looks 
 
 ## Status
 
-The native app lives in `app/` and uses Kotlin, Jetpack Compose, and a Yomitan-compatible SQLite database. The Flutter app in `jisho_lens/` is the released 1.x version. Keep it installed while the native app is verified, or uninstall it when you switch.
+The native app lives in `app/` and uses Kotlin, Jetpack Compose, and a Yomitan-compatible SQLite database. It replaces the 1.x app, whose source and old database are no longer part of this tree.
 
 - Preview package: `com.elianiva.preview`
 - Stable package: `com.elianiva`
 - Minimum Android version: 8.0 (API 26)
 
-The native app does not read the old Flutter database. Import a Yomitan `.zip` dictionary instead.
+The native app does not read the 1.x database. Import a Yomitan `.zip` dictionary instead.
 
 ## Features
 
@@ -111,7 +111,7 @@ The database mirrors Yomitan's object stores: `dictionaries`, `terms`, `term_met
 4. Pick the `.zip` file. The import runs in a foreground service and can be cancelled.
 5. Scan a picture or search for a word.
 
-The old Flutter release and its `jmdict.db` file are not compatible with the native app.
+The 1.x release and its `jmdict.db` file are not compatible with the native app.
 
 ## Development
 

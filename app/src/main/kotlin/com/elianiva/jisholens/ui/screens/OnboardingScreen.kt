@@ -67,7 +67,7 @@ fun OnboardingScreen(
             style = MaterialTheme.typography.bodyMedium,
         )
         Text(
-            "The old Flutter database is not compatible. Download a Yomitan .zip such as Jitendex or JMdict.",
+            "The old 1.x database is not compatible. Download a Yomitan .zip such as Jitendex or JMdict.",
             modifier = Modifier.padding(top = 12.dp),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
