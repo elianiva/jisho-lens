@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="import_channel_name">Dictionary import</string>
+    <string name="import_channel_description">Progress for importing dictionary archives</string>
+    <string name="import_notification_title">Importing dictionary</string>
+    <string name="import_notification_cancel">Cancel</string>
+    <string name="lookup_label">Look up in Jisho Lens</string>
+</resources>
