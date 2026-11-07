@@ -6,3 +6,10 @@ if ! command -v java >/dev/null 2>&1; then
     sudo apt-get update -qq
     sudo apt-get install -y -qq openjdk-17-jdk-headless
 fi
+
+# Android SDK plus a software-emulated Android 30 AVD. The emulator runs without
+# KVM, so it is slow; the download is ~7 GB. Opt in per thread:
+#   ANDROID_EMULATOR=1 bash .agents/setup
+if [ "${ANDROID_EMULATOR:-0}" = "1" ]; then
+    bash "$(dirname "$0")/android-emulator.sh" install
+fi
