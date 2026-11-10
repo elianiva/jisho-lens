@@ -1,5 +1,7 @@
 package com.elianiva.jisholens.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,8 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.FileOpen
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -21,12 +21,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.elianiva.jisholens.data.AppContainer
-import com.elianiva.jisholens.ui.components.LargeActionButton
+import com.elianiva.jisholens.data.DictionarySource
+import com.elianiva.jisholens.data.ImportState
+import com.elianiva.jisholens.ui.components.DictionarySourceList
+import com.elianiva.jisholens.ui.components.ImportProgressCard
 import com.elianiva.jisholens.ui.components.ShapeBadge
+import com.elianiva.jisholens.ui.components.rememberDictionaryDownloader
+import com.elianiva.jisholens.ui.components.rememberDictionaryImporter
 import com.elianiva.jisholens.ui.theme.JapaneseLocale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -35,11 +41,14 @@ import kotlinx.coroutines.withContext
 @Composable
 fun OnboardingScreen(
     container: AppContainer,
-    onImport: () -> Unit,
     onDone: () -> Unit,
 ) {
+    val context = LocalContext.current
     val dictionaries by container.dictionaries.collectAsStateWithLifecycle()
+    val importState by container.importController.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
+    val importFile = rememberDictionaryImporter()
+    val download = rememberDictionaryDownloader()
 
     LaunchedEffect(dictionaries) {
         if (dictionaries.isNotEmpty()) {
@@ -49,7 +58,11 @@ fun OnboardingScreen(
     }
 
     OnboardingContent(
-        onImport = onImport,
+        importState = importState,
+        onImport = importFile,
+        onDownload = download,
+        onOpenPage = { source -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(source.pageUrl))) },
+        onCancelImport = container.importController::requestCancel,
         onSkip = {
             scope.launch {
                 container.settings.setOnboardingComplete(true)
@@ -59,9 +72,23 @@ fun OnboardingScreen(
     )
 }
 
-/** First run. Importing a dictionary is the one thing a new person needs, so it is the one big button. */
+/**
+ * First run. A new reader needs one thing: a dictionary. Downloading one is the
+ * shortest path, so the catalogue is on this screen with the size and the licence,
+ * and importing a file is the secondary action.
+ */
 @Composable
-fun OnboardingContent(onImport: () -> Unit, onSkip: () -> Unit) {
+fun OnboardingContent(
+    onImport: () -> Unit,
+    onSkip: () -> Unit,
+    importState: ImportState = ImportState.Idle,
+    onDownload: (DictionarySource) -> Unit = {},
+    onOpenPage: (DictionarySource) -> Unit = {},
+    onCancelImport: () -> Unit = {},
+) {
+    val busy = importState is ImportState.Downloading ||
+        importState is ImportState.Copying ||
+        importState is ImportState.Importing
     Box(Modifier.fillMaxSize().systemBarsPadding()) {
         Column(
             modifier = Modifier
@@ -71,14 +98,14 @@ fun OnboardingContent(onImport: () -> Unit, onSkip: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Column(
-                modifier = Modifier.weight(1f, fill = true).padding(vertical = 24.dp),
+                modifier = Modifier.padding(vertical = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
                 ShapeBadge(
                     polygon = MaterialShapes.Cookie12Sided,
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    size = 168.dp,
+                    size = 128.dp,
                     spinSeconds = 40,
                 ) {
                     Text(
@@ -89,25 +116,36 @@ fun OnboardingContent(onImport: () -> Unit, onSkip: () -> Unit) {
                 }
                 Text(
                     text = "Read Japanese\nfrom any picture",
-                    modifier = Modifier.padding(top = 32.dp),
+                    modifier = Modifier.padding(top = 24.dp),
                     style = MaterialTheme.typography.displaySmallEmphasized,
                     textAlign = TextAlign.Center,
                 )
                 Text(
-                    text = "Import a Yomitan dictionary, such as Jitendex or JMdict.",
-                    modifier = Modifier.padding(top = 16.dp),
+                    text = "Start with a dictionary. Everything stays on this device.",
+                    modifier = Modifier.padding(top = 12.dp),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                 )
             }
-            LargeActionButton(
-                text = "Import dictionary",
-                icon = Icons.Rounded.FileOpen,
-                onClick = onImport,
-                modifier = Modifier.fillMaxWidth(),
+            Text(
+                text = "Start with a dictionary",
+                modifier = Modifier.fillMaxWidth().padding(start = 4.dp, bottom = 8.dp),
+                style = MaterialTheme.typography.titleMediumEmphasized,
             )
-            TextButton(onClick = onSkip, modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)) {
+            if (busy) {
+                ImportProgressCard(
+                    state = importState,
+                    onCancel = onCancelImport,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            } else {
+                DictionarySourceList(onDownload = onDownload, onOpenPage = onOpenPage)
+            }
+            TextButton(onClick = onImport, modifier = Modifier.padding(top = 4.dp)) {
+                Text("Import a downloaded file")
+            }
+            TextButton(onClick = onSkip, modifier = Modifier.padding(bottom = 8.dp)) {
                 Text("Skip for now")
             }
         }

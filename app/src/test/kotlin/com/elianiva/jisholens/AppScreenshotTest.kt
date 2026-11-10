@@ -27,7 +27,7 @@ class AppScreenshotTest {
 
     @Test
     fun firstRun() {
-        waitFor("Import dictionary")
+        waitFor("Start with a dictionary")
         compose.onRoot().captureRoboImage("build/screenshots/app/1-first-run.png")
 
         compose.onNodeWithText("Skip for now").performClick()

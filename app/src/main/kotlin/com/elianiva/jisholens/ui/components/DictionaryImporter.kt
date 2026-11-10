@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import com.elianiva.jisholens.data.DictionarySource
 import com.elianiva.jisholens.data.ImportService
 
 /**
@@ -47,4 +48,36 @@ fun rememberDictionaryImporter(): () -> Unit {
         }
     }
     return remember(picker) { { picker.launch(arrayOf("*/*")) } }
+}
+
+/**
+ * Returns an action that downloads a catalogue dictionary and imports it in the same
+ * foreground session as a picked file. The notification permission is asked first on
+ * Android 13 and later, so progress is visible outside the app.
+ */
+@Composable
+fun rememberDictionaryDownloader(): (DictionarySource) -> Unit {
+    val context = LocalContext.current
+    var pending by remember { mutableStateOf<DictionarySource?>(null) }
+
+    val notificationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) {
+        pending?.let { source ->
+            ImportService.download(context, source.url, source.title)
+            pending = null
+        }
+    }
+    val start: (DictionarySource) -> Unit = { source ->
+        val needsPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        if (needsPermission) {
+            pending = source
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            ImportService.download(context, source.url, source.title)
+        }
+    }
+    return start
 }

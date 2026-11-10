@@ -29,9 +29,11 @@ The native app does not read the 1.x database. Import a Yomitan `.zip` dictionar
 - Rank scanned words and their entries by the imported frequency data, so the common word comes first.
 - Mark words as known. Reader mode dims them and shows how much of the page you know.
 - Send a mined word to AnkiDroid with its reading, gloss, the sentence it came from, and its pitch accent.
+- Download Jitendex or JMdict on first run, with the size and the licence shown, and import it in one tap.
 - Material 3 Expressive design with Google Sans Flex. Light, dark, and system themes, with dynamic color on Android 12 and later and a blue fallback.
 - Share an image to the app, or select text in another app and use the Look up action.
 - No storage permission. The app uses the system file picker and a foreground service for imports.
+- The network is used only for a dictionary download that you start. Scanning, OCR, and lookup stay on the device.
 - A captured frame lives in memory only, and the reader is `FLAG_SECURE`, so the page never reaches the recents thumbnail or a screenshot. Closing the reader stops the capture session.
 
 ## Limitations

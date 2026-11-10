@@ -1,5 +1,7 @@
 package com.elianiva.jisholens.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -47,18 +49,22 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.elianiva.jisholens.data.AppContainer
 import com.elianiva.jisholens.data.ImportState
+import com.elianiva.jisholens.data.DictionarySource
 import com.elianiva.jisholens.dictionary.DictionaryRecord
 import com.elianiva.jisholens.ui.components.DictionaryShapes
+import com.elianiva.jisholens.ui.components.DictionarySourceList
 import com.elianiva.jisholens.ui.components.EmptyState
 import com.elianiva.jisholens.ui.components.ImportProgressCard
 import com.elianiva.jisholens.ui.components.LargeActionButton
 import com.elianiva.jisholens.ui.components.ShapeBadge
 import com.elianiva.jisholens.ui.components.segmentedItemColors
 import com.elianiva.jisholens.ui.components.formatBytes
+import com.elianiva.jisholens.ui.components.rememberDictionaryDownloader
 import com.elianiva.jisholens.ui.components.rememberDictionaryImporter
 import kotlinx.coroutines.launch
 
@@ -72,7 +78,9 @@ fun DictionariesScreen(
     val importState by container.importController.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     var pendingDelete by remember { mutableStateOf<DictionaryRecord?>(null) }
+    val context = LocalContext.current
     val importDictionary = rememberDictionaryImporter()
+    val downloadDictionary = rememberDictionaryDownloader()
 
     LaunchedEffect(Unit) { container.refreshDictionaries() }
     LaunchedEffect(importState) {
@@ -95,6 +103,10 @@ fun DictionariesScreen(
         snackbar = snackbar,
         onBack = onBack,
         onImport = importDictionary,
+        onDownloadSource = downloadDictionary,
+        onOpenSource = { source ->
+            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(source.pageUrl)))
+        },
         onCancelImport = container.importController::requestCancel,
         onEnabled = { dictionary, enabled ->
             scope.launch {
@@ -143,6 +155,8 @@ fun DictionariesContent(
     snackbar: SnackbarHostState,
     onBack: () -> Unit,
     onImport: () -> Unit,
+    onDownloadSource: (DictionarySource) -> Unit,
+    onOpenSource: (DictionarySource) -> Unit,
     onCancelImport: () -> Unit,
     onEnabled: (DictionaryRecord, Boolean) -> Unit,
     onMove: (DictionaryRecord, Int) -> Unit,
@@ -197,6 +211,13 @@ fun DictionariesContent(
                             title = "No dictionaries yet",
                             modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
                             action = { LargeActionButton("Choose a .zip file", Icons.Rounded.Add, onClick = onImport) },
+                        )
+                    }
+                    item(key = "sources") {
+                        DictionarySourceList(
+                            onDownload = onDownloadSource,
+                            onOpenPage = onOpenSource,
+                            modifier = Modifier.padding(top = 16.dp),
                         )
                     }
                 }

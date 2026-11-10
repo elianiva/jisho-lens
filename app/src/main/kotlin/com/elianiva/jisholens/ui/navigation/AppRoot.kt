@@ -233,7 +233,6 @@ fun AppRoot(
                     composable<OnboardingRoute> {
                         OnboardingScreen(
                             container = container,
-                            onImport = { navController.navigate(DictionariesRoute) },
                             onDone = {
                                 navController.navigate(SearchRoute) {
                                     popUpTo(navController.graph.findStartDestination().id) { inclusive = true }

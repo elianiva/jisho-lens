@@ -21,6 +21,7 @@ import com.elianiva.jisholens.ui.components.WithoutDecorativeMotion
 import com.elianiva.jisholens.ui.screens.DictionariesContent
 import com.elianiva.jisholens.ui.screens.DictionaryStatus
 import com.elianiva.jisholens.ui.screens.OnboardingContent
+import com.elianiva.jisholens.domain.Entry
 import com.elianiva.jisholens.domain.ScanWord
 import com.elianiva.jisholens.ui.screens.ReaderLine
 import com.elianiva.jisholens.ui.screens.ScanContent
@@ -82,6 +83,16 @@ fun OnboardingLight() = Frame(false) { OnboardingContent(onImport = {}, onSkip =
 @Preview(name = "Onboarding dark", widthDp = W, heightDp = H)
 @Composable
 fun OnboardingDark() = Frame(true) { OnboardingContent(onImport = {}, onSkip = {}) }
+
+@Preview(name = "Onboarding downloading", widthDp = W, heightDp = H)
+@Composable
+fun OnboardingDownloading() = Frame(false) {
+    OnboardingContent(
+        onImport = {},
+        onSkip = {},
+        importState = ImportState.Downloading("Jitendex", 12L * 1024 * 1024, 38L * 1024 * 1024),
+    )
+}
 
 @Preview(name = "Search recents", widthDp = W, heightDp = H)
 @Composable
@@ -173,6 +184,8 @@ private fun Dictionaries(dark: Boolean, state: ImportState, list: List<Dictionar
         snackbar = remember { SnackbarHostState() },
         onBack = {},
         onImport = {},
+        onDownloadSource = {},
+        onOpenSource = {},
         onCancelImport = {},
         onEnabled = { _, _ -> },
         onMove = { _, _ -> },
@@ -399,7 +412,7 @@ fun ScreenReaderKnownWords() = Screen(
 )
 
 /** One reader line whose words are placed at their real offsets in the text. */
-private fun readerLine(text: String, words: List<Pair<String, com.elianiva.jisholens.domain.Entry>>): ReaderLine =
+private fun readerLine(text: String, words: List<Pair<String, Entry>>): ReaderLine =
     ReaderLine(
         text = text,
         rect = android.graphics.Rect(),

@@ -55,6 +55,16 @@ class ImportService : Service() {
                 startForegroundWithNotification("Preparing import", null)
                 scope.launch { runImport(uri) }
             }
+            ACTION_DOWNLOAD -> {
+                val url = intent.getStringExtra(EXTRA_URL)
+                val title = intent.getStringExtra(EXTRA_TITLE) ?: "dictionary"
+                if (url == null) {
+                    stopSelf()
+                    return START_NOT_STICKY
+                }
+                startForegroundWithNotification("Preparing download", title)
+                scope.launch { runDownload(url, title) }
+            }
             else -> stopSelf()
         }
         return START_NOT_STICKY
@@ -69,31 +79,83 @@ class ImportService : Service() {
             val total = displaySize(uri)
             controller.update(ImportState.Copying(name, 0, total))
             cachedFile = copyToCache(uri, name, total)
-            notify("Importing $name", "Reading archive")
-
-            val summary = container.repository.import(
-                archiveFile = cachedFile,
-                onProgress = { message ->
-                    controller.update(ImportState.Importing(name, message))
-                    notify("Importing $name", message)
-                },
-                shouldContinue = { !controller.cancelRequested },
-            )
-            controller.update(ImportState.Done(summary))
-            container.refreshDictionaries()
-            notify("Import complete", summary.title)
+            importArchive(cachedFile, name)
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: ImportCancelledException) {
             controller.update(ImportState.Cancelled)
         } catch (error: Exception) {
-            controller.update(ImportState.Failed(error.message ?: "Import failed"))
-            notify("Import failed", error.message ?: "The archive could not be imported")
+            fail(error, "The archive could not be imported")
         } finally {
             cachedFile?.delete()
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            stopSelf()
+            finishSession()
         }
+    }
+
+    /**
+     * One tap from onboarding: fetch the publisher's archive, then import it with the
+     * same foreground session and progress as a picked file.
+     */
+    private suspend fun runDownload(url: String, title: String) {
+        val controller = container.importController
+        controller.reset()
+        var downloaded: File? = null
+        try {
+            val directory = File(cacheDir, "downloads").apply { mkdirs() }
+            val target = File(directory, "${System.currentTimeMillis()}-${title.replace(' ', '-')}.zip")
+            notify("Downloading $title", "Starting")
+            var notifiedStep = -1L
+            downloaded = DictionaryDownloader.download(
+                url = url,
+                target = target,
+                onProgress = { bytes, total ->
+                    controller.update(ImportState.Downloading(title, bytes, total))
+                    // The system rate-limits notifications; one per 2 MB is plenty.
+                    val step = bytes / (2L * 1024 * 1024)
+                    if (step != notifiedStep) {
+                        notifiedStep = step
+                        notify("Downloading $title", "${bytes / 1024 / 1024} MB")
+                    }
+                },
+                shouldContinue = { !controller.cancelRequested },
+            )
+            importArchive(downloaded, title)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: ImportCancelledException) {
+            controller.update(ImportState.Cancelled)
+        } catch (error: Exception) {
+            fail(error, "The dictionary could not be downloaded")
+        } finally {
+            downloaded?.delete()
+            finishSession()
+        }
+    }
+
+    private suspend fun importArchive(archive: File, name: String) {
+        val controller = container.importController
+        notify("Importing $name", "Reading archive")
+        val summary = container.repository.import(
+            archiveFile = archive,
+            onProgress = { message ->
+                controller.update(ImportState.Importing(name, message))
+                notify("Importing $name", message)
+            },
+            shouldContinue = { !controller.cancelRequested },
+        )
+        controller.update(ImportState.Done(summary))
+        container.refreshDictionaries()
+        notify("Import complete", summary.title)
+    }
+
+    private fun fail(error: Exception, fallback: String) {
+        container.importController.update(ImportState.Failed(error.message ?: fallback))
+        notify("Import failed", error.message ?: fallback)
+    }
+
+    private fun finishSession() {
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
     }
 
     private fun copyToCache(uri: Uri, name: String, total: Long?): File {
@@ -208,13 +270,25 @@ class ImportService : Service() {
         private const val CHANNEL_ID = "dictionary-import"
         private const val NOTIFICATION_ID = 41
         private const val ACTION_START = "com.elianiva.jisholens.action.IMPORT"
+        private const val ACTION_DOWNLOAD = "com.elianiva.jisholens.action.DOWNLOAD_DICTIONARY"
         private const val ACTION_CANCEL = "com.elianiva.jisholens.action.CANCEL_IMPORT"
         private const val EXTRA_URI = "uri"
+        private const val EXTRA_URL = "url"
+        private const val EXTRA_TITLE = "title"
 
         fun start(context: Context, uri: Uri) {
             val intent = Intent(context, ImportService::class.java)
                 .setAction(ACTION_START)
                 .putExtra(EXTRA_URI, uri.toString())
+            ContextCompat.startForegroundService(context, intent)
+        }
+
+        /** Downloads [url] and imports it in the same foreground session. */
+        fun download(context: Context, url: String, title: String) {
+            val intent = Intent(context, ImportService::class.java)
+                .setAction(ACTION_DOWNLOAD)
+                .putExtra(EXTRA_URL, url)
+                .putExtra(EXTRA_TITLE, title)
             ContextCompat.startForegroundService(context, intent)
         }
     }

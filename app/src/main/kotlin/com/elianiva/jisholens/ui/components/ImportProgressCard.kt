@@ -67,6 +67,34 @@ fun ImportProgressCard(
             )
             }
         }
+        is ImportState.Downloading -> ProgressSurface(modifier) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                LoadingIndicator(Modifier.size(48.dp), color = MaterialTheme.colorScheme.onPrimaryContainer)
+                Column(Modifier.weight(1f)) {
+                    Text("Downloading", style = MaterialTheme.typography.titleMediumEmphasized)
+                    Text(text = state.name, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+                }
+            }
+            val total = state.total
+            if (total != null && total > 0) {
+                LinearWavyProgressIndicator(
+                    progress = { (state.bytes.toFloat() / total.toFloat()).coerceIn(0f, 1f) },
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f),
+                )
+                Text(
+                    text = "${formatBytes(state.bytes)} of ${formatBytes(total)}",
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            } else {
+                LinearWavyProgressIndicator(
+                    Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f),
+                )
+            }
+        }
         is ImportState.Importing -> ProgressSurface(modifier) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 LoadingIndicator(Modifier.size(48.dp), color = MaterialTheme.colorScheme.onPrimaryContainer)

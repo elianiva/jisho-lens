@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.asStateFlow
 sealed interface ImportState {
     data object Idle : ImportState
     data class Copying(val name: String, val bytes: Long, val total: Long?) : ImportState
+    data class Downloading(val name: String, val bytes: Long, val total: Long?) : ImportState
     data class Importing(val title: String, val message: String) : ImportState
     data class Done(val summary: ImportSummary) : ImportState
     data class Failed(val message: String) : ImportState

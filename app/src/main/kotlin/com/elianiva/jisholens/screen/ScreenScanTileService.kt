@@ -1,5 +1,6 @@
 package com.elianiva.jisholens.screen
 
+import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.Intent
 import android.os.Build
@@ -40,7 +41,10 @@ class ScreenScanTileService : TileService() {
                 ),
             )
         } else {
+            // Below Android 14 the Intent overload is the only one, and it is not the
+            // one that throws. The version check above keeps it off newer systems.
             @Suppress("DEPRECATION")
+            @SuppressLint("StartActivityAndCollapseDeprecated")
             startActivityAndCollapse(intent)
         }
     }
