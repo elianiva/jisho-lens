@@ -13,10 +13,19 @@ All notable changes to this project will be documented in this file. See [standa
 * open on Look up, with Scan and Settings beside it; the navigation bar becomes a rail from 840 dp
 * add recent searches, search as you type, and a wallpaper-colors switch
 * use `com.elianiva` as the stable application ID and `com.elianiva.preview` for previews
+* read the screen from a Quick Settings tile: one MediaProjection frame, ML Kit OCR, every word on the frozen page tappable, and `scanAt` offers the shorter candidates the greedy scan drops
+* draw the pitch accent contour from a dictionary's `pitch` metadata, with the pattern named
+* rank scan candidates and their entries by imported frequency data
+* mark words as known, dim them in reader mode, and show how much of the page is known
+* mine a word into an Anki note through AnkiDroid's `ACTION_SEND` contract, with the sentence, the pitch, and a share-sheet fallback
+* download Jitendex or JMdict on first run, with size and licence shown, and import it in one tap
 
 ### Notes
 
 * Material 3 is pinned to 1.5.0-alpha18, the last 1.5 build that works with Compose 1.11, compileSdk 36 and AGP 8.13. Later builds need compileSdk 37 and AGP 9.1
+* the screen lens keeps one frame in memory and never writes it to disk; closing the reader stops the capture session, and the window is `FLAG_SECURE`
+* Jitendex and JMdict in Yomitan format ship no `term_meta` banks, so the pitch contour and the frequency ranking show up with dictionaries that provide them
+* the Anki action uses AnkiDroid's documented `ACTION_SEND` contract, because its Instant-Add library is LGPL-3.0 and this app is MIT
 * the 1.x app and its `jmdict.db` database are not compatible with the native app
 
 ## 1.1.0 (2023-10-08)
