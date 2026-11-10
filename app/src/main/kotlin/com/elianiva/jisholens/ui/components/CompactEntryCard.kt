@@ -63,7 +63,14 @@ fun CompactEntryCard(
                             style = MaterialTheme.typography.headlineMediumEmphasized.copy(localeList = JapaneseLocale),
                         )
                     }
-                    if (entry.reading.isNotBlank() && entry.reading != entry.expression &&
+                    val pitch = entry.pitch.firstOrNull()
+                    if (pitch != null) {
+                        PitchContour(
+                            accent = pitch,
+                            fallbackReading = entry.reading,
+                            modifier = Modifier.padding(top = 2.dp),
+                        )
+                    } else if (entry.reading.isNotBlank() && entry.reading != entry.expression &&
                         entry.ruby.none { it.reading != null }
                     ) {
                         Text(

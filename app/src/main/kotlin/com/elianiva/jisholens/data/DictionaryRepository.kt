@@ -11,6 +11,7 @@ import com.elianiva.jisholens.dictionary.YomitanArchive
 import com.elianiva.jisholens.dictionary.YomitanImporter
 import com.elianiva.jisholens.domain.Entry
 import com.elianiva.jisholens.domain.EntryTag
+import com.elianiva.jisholens.domain.PitchAccent
 import com.elianiva.jisholens.domain.ScanWord
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -85,7 +86,7 @@ class DictionaryRepository(private val database: DictionaryDatabase) {
     private fun entries(terms: List<TermResult>): List<Entry> {
         if (terms.isEmpty()) return emptyList()
         val tags = store.tags().associateBy { it.name }
-        val frequencies = frequencies(terms)
+        val meta = termMeta(terms)
         return terms.map { term ->
             Entry(
                 termId = term.termId,
@@ -98,10 +99,11 @@ class DictionaryRepository(private val database: DictionaryDatabase) {
                     EntryTag(name = name, notes = tags[name]?.notes?.takeIf { it.isNotBlank() })
                 },
                 glossary = term.glossary,
-                frequency = frequencies[term.expression],
+                frequency = meta.frequencies[term.expression],
                 score = term.score,
                 deinflection = term.deinflection?.originalText,
                 deinflectionReasons = term.deinflection?.reasons.orEmpty(),
+                pitch = meta.pitches[term.expression].orEmpty(),
             )
         }
     }
@@ -112,13 +114,32 @@ class DictionaryRepository(private val database: DictionaryDatabase) {
             .filter { it.isNotEmpty() }
             .distinct()
 
-    private fun frequencies(terms: List<TermResult>): Map<String, Double> {
+    private class TermMeta(
+        val frequencies: Map<String, Double>,
+        val pitches: Map<String, List<PitchAccent>>,
+    )
+
+    /** One pass over `term_meta` for every expression in [terms]. */
+    private fun termMeta(terms: List<TermResult>): TermMeta {
         val expressions = terms.flatMap { listOf(it.expression, it.reading) }.toSet()
-        return store.termMeta(expressions)
-            .asSequence()
-            .filter { it.mode == "freq" }
-            .mapNotNull { meta -> TermMetaParser.frequency(meta.data)?.let { meta.expression to it } }
-            .toMap()
+        val frequencies = HashMap<String, Double>()
+        val pitches = HashMap<String, MutableList<PitchAccent>>()
+        for (record in store.termMeta(expressions)) {
+            when (record.mode) {
+                "freq" -> TermMetaParser.frequency(record.data)?.let {
+                    frequencies.putIfAbsent(record.expression, it)
+                }
+                "pitch" -> {
+                    val accents = pitches.getOrPut(record.expression) { ArrayList(1) }
+                    TermMetaParser.pitch(record.data).forEach { accent ->
+                        if (accents.none { it.position == accent.position && it.reading == accent.reading }) {
+                            accents.add(accent)
+                        }
+                    }
+                }
+            }
+        }
+        return TermMeta(frequencies, pitches)
     }
 
     private fun ScanMatch.toScanWord(entriesById: Map<Long, Entry>): ScanWord = ScanWord(

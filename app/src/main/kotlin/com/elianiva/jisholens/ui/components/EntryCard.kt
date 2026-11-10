@@ -68,7 +68,14 @@ fun EntryCard(
                 )
                 if (entry.frequency != null) FrequencyPill(entry.frequency)
             }
-            if (entry.reading.isNotBlank() && entry.reading != entry.expression &&
+            val pitch = entry.pitch.firstOrNull()
+            if (pitch != null) {
+                PitchContour(
+                    accent = pitch,
+                    fallbackReading = entry.reading,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            } else if (entry.reading.isNotBlank() && entry.reading != entry.expression &&
                 entry.ruby.none { it.reading != null }
             ) {
                 Text(

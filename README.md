@@ -25,7 +25,7 @@ The native app does not read the 1.x database. Import a Yomitan `.zip` dictionar
 - Search Japanese words, kanji, kana, and English glosses.
 - Deinflect conjugated input, so 食べさせられた finds 食べる.
 - Import several Yomitan dictionaries, enable them, reorder them, and remove them.
-- Show tags, glosses, cross references, images, and frequency data from the dictionary.
+- Show tags, glosses, cross references, images, frequency data, and the pitch accent contour from the dictionary's `pitch` metadata.
 - Material 3 Expressive design with Google Sans Flex. Light, dark, and system themes, with dynamic color on Android 12 and later and a blue fallback.
 - Share an image to the app, or select text in another app and use the Look up action.
 - No storage permission. The app uses the system file picker and a foreground service for imports.

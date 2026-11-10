@@ -10,6 +10,7 @@ import com.elianiva.jisholens.dictionary.DictionaryRecord
 import com.elianiva.jisholens.dictionary.Furigana
 import com.elianiva.jisholens.domain.Entry
 import com.elianiva.jisholens.domain.EntryTag
+import com.elianiva.jisholens.domain.PitchAccent
 import com.elianiva.jisholens.domain.ScanWord
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -44,6 +45,7 @@ internal object Samples {
         frequency = 412.0,
         score = 10.0,
         deinflection = null,
+        pitch = listOf(PitchAccent(reading = "たべる", position = 2)),
     )
 
     val taberareta = taberu.copy(
@@ -78,6 +80,7 @@ internal object Samples {
         frequency = 28.0,
         score = 9.0,
         deinflection = null,
+        pitch = listOf(PitchAccent(reading = "みる", position = 1)),
     )
 
     val nihongo = Entry(
@@ -92,6 +95,7 @@ internal object Samples {
         frequency = 1204.0,
         score = 9.0,
         deinflection = null,
+        pitch = listOf(PitchAccent(reading = "にほんご", position = 0)),
     )
 
     val dictionaries = listOf(

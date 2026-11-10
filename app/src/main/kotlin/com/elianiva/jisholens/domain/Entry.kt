@@ -20,6 +20,8 @@ data class Entry(
     val deinflection: String?,
     /** The rules that were applied to reach the entry, such as causative and passive. */
     val deinflectionReasons: List<String> = emptyList(),
+    /** Pitch accents from the dictionary's `pitch` metadata, usually one. */
+    val pitch: List<PitchAccent> = emptyList(),
 )
 
 data class ScanWord(
