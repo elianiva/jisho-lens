@@ -6,9 +6,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.elianiva.jisholens.data.DictionaryRepository
 import com.elianiva.jisholens.data.OcrEngine
+import com.elianiva.jisholens.data.SettingsRepository
 import com.elianiva.jisholens.data.TextLineBox
 import com.elianiva.jisholens.domain.Entry
 import com.elianiva.jisholens.domain.ScanWord
+import com.elianiva.jisholens.domain.Coverage
+import com.elianiva.jisholens.domain.headword
+import com.elianiva.jisholens.domain.pageCoverage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -57,10 +61,15 @@ data class ScreenScanUiState(
     val readingPage: Boolean = false,
     val cardAtTop: Boolean = false,
     val expanded: Boolean = false,
+    val knownWords: Set<String> = emptySet(),
 ) {
     val word: ScanWord? get() = candidates.getOrNull(selectedCandidate)
     val entries: List<Entry> get() = word?.entries.orEmpty()
     val line: TextLineBox? get() = lines.getOrNull(selectedLine)
+
+    /** Unique headwords on the page and how many the reader already knows. */
+    val pageCoverage: Coverage
+        get() = pageCoverage(readerLines.flatMap { it.words }, knownWords)
 }
 
 /**
@@ -70,6 +79,7 @@ data class ScreenScanUiState(
  */
 class ScreenScanViewModel(
     private val repository: DictionaryRepository,
+    private val settings: SettingsRepository,
     private val ocr: OcrEngine,
     private val frame: Bitmap?,
     initialMessage: ScreenScanMessage?,
@@ -87,7 +97,17 @@ class ScreenScanViewModel(
     private var readerJob: Job? = null
 
     init {
+        viewModelScope.launch {
+            settings.knownWords.collect { known -> _state.update { it.copy(knownWords = known) } }
+        }
         if (frame != null && initialMessage == null) read()
+    }
+
+    /** Marks the selected word's headword as known, or takes the mark away. */
+    fun toggleKnown() {
+        val expression = _state.value.word?.headword() ?: return
+        val known = expression in _state.value.knownWords
+        viewModelScope.launch { settings.setKnown(expression, !known) }
     }
 
     private fun read() {

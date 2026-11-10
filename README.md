@@ -27,6 +27,7 @@ The native app does not read the 1.x database. Import a Yomitan `.zip` dictionar
 - Import several Yomitan dictionaries, enable them, reorder them, and remove them.
 - Show tags, glosses, cross references, images, frequency data, and the pitch accent contour from the dictionary's `pitch` metadata.
 - Rank scanned words and their entries by the imported frequency data, so the common word comes first.
+- Mark words as known. Reader mode dims them and shows how much of the page you know.
 - Material 3 Expressive design with Google Sans Flex. Light, dark, and system themes, with dynamic color on Android 12 and later and a blue fallback.
 - Share an image to the app, or select text in another app and use the Look up action.
 - No storage permission. The app uses the system file picker and a foreground service for imports.

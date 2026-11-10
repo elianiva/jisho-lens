@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material.icons.rounded.ContentCopy
@@ -35,6 +36,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -66,8 +68,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.elianiva.jisholens.data.AppContainer
+import com.elianiva.jisholens.domain.Coverage
 import com.elianiva.jisholens.domain.Entry
 import com.elianiva.jisholens.domain.ScanWord
+import com.elianiva.jisholens.domain.isKnown
 import com.elianiva.jisholens.ui.components.CompactEntryCard
 import com.elianiva.jisholens.ui.components.EntryCard
 import com.elianiva.jisholens.ui.components.fitOrigin
@@ -94,6 +98,7 @@ fun ScreenScanScreen(
             initializer {
                 ScreenScanViewModel(
                     repository = container.repository,
+                    settings = container.settings,
                     ocr = container.ocr,
                     frame = container.screenFrames.frame,
                     initialMessage = message,
@@ -108,6 +113,7 @@ fun ScreenScanScreen(
         loadMedia = container.repository::media,
         onTap = viewModel::onTap,
         onSelectCandidate = viewModel::selectCandidate,
+        onToggleKnown = viewModel::toggleKnown,
         onToggleReader = viewModel::toggleReader,
         onSelectReaderWord = viewModel::selectReaderWord,
         onClearSelection = viewModel::clearSelection,
@@ -130,6 +136,7 @@ fun ScreenScanContent(
     loadMedia: suspend (Long, String) -> ByteArray?,
     onTap: (imageX: Float, imageY: Float) -> Unit,
     onSelectCandidate: (Int) -> Unit,
+    onToggleKnown: () -> Unit,
     onToggleReader: () -> Unit,
     onSelectReaderWord: (lineIndex: Int, word: ScanWord) -> Unit,
     onClearSelection: () -> Unit,
@@ -174,6 +181,7 @@ fun ScreenScanContent(
                     state.candidates.isNotEmpty() -> WordCard(
                         state = state,
                         onSelectCandidate = onSelectCandidate,
+                        onToggleKnown = onToggleKnown,
                         onExpand = onExpand,
                         onClearSelection = onClearSelection,
                         onCopy = onCopy,
@@ -343,12 +351,14 @@ private fun ScreenTopBar(
 private fun WordCard(
     state: ScreenScanUiState,
     onSelectCandidate: (Int) -> Unit,
+    onToggleKnown: () -> Unit,
     onExpand: () -> Unit,
     onClearSelection: () -> Unit,
     onCopy: (String) -> Unit,
 ) {
     val entry = state.entries.firstOrNull() ?: return
     val word = state.word
+    val known = entry.expression in state.knownWords
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (state.candidates.size > 1) {
             // The chips sit on their own surface: over a frozen page, text on the frame
@@ -392,6 +402,13 @@ private fun WordCard(
             entry = entry,
             onExpand = onExpand,
             actions = {
+                IconButton(onClick = onToggleKnown) {
+                    Icon(
+                        imageVector = Icons.Rounded.Check,
+                        contentDescription = if (known) "Unmark ${entry.expression} as known" else "Mark ${entry.expression} as known",
+                        tint = if (known) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 IconButton(onClick = { onCopy(entry.expression) }) {
                     Icon(Icons.Rounded.ContentCopy, contentDescription = "Copy the word")
                 }
@@ -557,14 +574,19 @@ private fun ReaderPage(
                     Text("Reading the page…", style = MaterialTheme.typography.bodyLarge)
                 }
             } else {
+                CoverageHeader(
+                    coverage = state.pageCoverage,
+                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 12.dp),
+                )
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 260.dp),
+                    contentPadding = PaddingValues(start = 20.dp, top = 0.dp, end = 20.dp, bottom = 260.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
                     itemsIndexed(state.readerLines) { index, line ->
                         ReaderLineText(
                             line = line,
+                            knownWords = state.knownWords,
                             onSelectWord = { word -> onSelectWord(index, word) },
                         )
                     }
@@ -574,8 +596,33 @@ private fun ReaderPage(
     }
 }
 
+/** "You know 82% of this page", with a bar, once the page has any words at all. */
 @Composable
-private fun ReaderLineText(line: ReaderLine, onSelectWord: (ScanWord) -> Unit) {
+private fun CoverageHeader(coverage: Coverage, modifier: Modifier = Modifier) {
+    if (coverage.total == 0) return
+    Column(modifier.fillMaxWidth()) {
+        Text(
+            text = "You know ${coverage.percent}% of this page",
+            style = MaterialTheme.typography.titleMediumEmphasized,
+        )
+        Text(
+            text = "${coverage.known} of ${coverage.total} words marked as known",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        LinearProgressIndicator(
+            progress = { coverage.percent / 100f },
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+        )
+    }
+}
+
+@Composable
+private fun ReaderLineText(
+    line: ReaderLine,
+    knownWords: Set<String>,
+    onSelectWord: (ScanWord) -> Unit,
+) {
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -595,17 +642,27 @@ private fun ReaderLineText(line: ReaderLine, onSelectWord: (ScanWord) -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
+                val known = word.isKnown(knownWords)
                 Text(
                     text = word.surface,
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
                         .clickable { onSelectWord(word) }
-                        .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f))
+                        .then(
+                            if (known) Modifier else Modifier.background(
+                                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                            ),
+                        )
                         .padding(horizontal = 3.dp, vertical = 2.dp),
                     style = MaterialTheme.typography.bodyLarge.copy(
                         localeList = JapaneseLocale,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = if (known) FontWeight.Normal else FontWeight.SemiBold,
                     ),
+                    color = if (known) {
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
                 )
             }
             cursor = word.end

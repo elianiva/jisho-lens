@@ -266,6 +266,7 @@ private fun Screen(
         loadMedia = noMedia,
         onTap = { _, _ -> },
         onSelectCandidate = {},
+        onToggleKnown = {},
         onToggleReader = {},
         onSelectReaderWord = { _, _ -> },
         onClearSelection = {},
@@ -288,6 +289,7 @@ private fun screenState(
     readerLines: List<ReaderLine> = emptyList(),
     expanded: Boolean = false,
     withFrame: Boolean = true,
+    knownWords: Set<String> = emptySet(),
 ): ScreenScanUiState {
     val (bitmap, lines) = Samples.screenPage
     return ScreenScanUiState(
@@ -302,6 +304,7 @@ private fun screenState(
         readerLines = readerLines,
         cardAtTop = cardAtTop,
         expanded = expanded,
+        knownWords = knownWords,
     )
 }
 
@@ -371,6 +374,21 @@ fun ScreenReaderPage() = Screen(
     screenState(
         reader = true,
         selectedLine = -1,
+        readerLines = listOf(
+            readerLine("昨日、友達と", emptyList()),
+            readerLine("ラーメンを食べた。", listOf("ラーメン" to Samples.ramen, "食べた" to Samples.tabeta)),
+            readerLine("とても美味しかった。", listOf("美味しかった" to Samples.oishikatta)),
+        ),
+    ),
+)
+
+@Preview(name = "Screen reader known words", widthDp = W, heightDp = H)
+@Composable
+fun ScreenReaderKnownWords() = Screen(
+    screenState(
+        reader = true,
+        selectedLine = -1,
+        knownWords = setOf("食べる", "ラーメン"),
         readerLines = listOf(
             readerLine("昨日、友達と", emptyList()),
             readerLine("ラーメンを食べた。", listOf("ラーメン" to Samples.ramen, "食べた" to Samples.tabeta)),

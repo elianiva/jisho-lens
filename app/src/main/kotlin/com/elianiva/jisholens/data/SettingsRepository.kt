@@ -58,6 +58,32 @@ class SettingsRepository(context: Context) {
         dataStore.edit { it[THEME] = theme.name }
     }
 
+    /**
+     * Headwords the reader marked as known. Stored as one newline-joined string:
+     * the set stays small, and one preferences key needs no migration.
+     */
+    val knownWords: Flow<Set<String>> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { preferences ->
+            preferences[KNOWN_WORDS].orEmpty()
+                .split('\n')
+                .filter { it.isNotBlank() }
+                .toSet()
+        }
+
+    suspend fun setKnown(word: String, known: Boolean) {
+        val clean = word.trim().replace('\n', ' ')
+        if (clean.isEmpty()) return
+        dataStore.edit { preferences ->
+            val current = preferences[KNOWN_WORDS].orEmpty()
+                .split('\n')
+                .filter { it.isNotBlank() }
+                .toMutableSet()
+            if (known) current.add(clean) else current.remove(clean)
+            preferences[KNOWN_WORDS] = current.joinToString("\n")
+        }
+    }
+
     /** Latest lookups first, without duplicates. */
     val recentSearches: Flow<List<String>> = dataStore.data
         .catch { emit(emptyPreferences()) }
@@ -97,5 +123,6 @@ class SettingsRepository(context: Context) {
         val RECENTS = stringPreferencesKey("recent_searches")
         const val MAX_RECENTS = 12
         val ONBOARDING = booleanPreferencesKey("onboarding_complete")
+        val KNOWN_WORDS = stringPreferencesKey("known_words")
     }
 }
