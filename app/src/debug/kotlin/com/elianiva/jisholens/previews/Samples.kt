@@ -46,7 +46,17 @@ internal object Samples {
         deinflection = null,
     )
 
-    val taberareta = taberu.copy(termId = 2, deinflection = "食べさせられた")
+    val taberareta = taberu.copy(
+        termId = 2,
+        deinflection = "食べさせられた",
+        deinflectionReasons = listOf("causative", "passive", "past"),
+    )
+
+    val tabeta = taberu.copy(
+        termId = 5,
+        deinflection = "食べた",
+        deinflectionReasons = listOf("past"),
+    )
 
     val miru = Entry(
         termId = 3,
@@ -90,6 +100,9 @@ internal object Samples {
         DictionaryRecord(3, "KANJIDIC", "2026-06", 3, false, false, 2, null, 0L, true, true, mapOf("kanji" to 13_108)),
     )
 
+    /** The drawn page, built once and shared by the frozen-reader previews. */
+    val screenPage: Pair<Bitmap, List<TextLineBox>> by lazy { scanPage() }
+
     /** A drawn page of Japanese text, so the scan screen can be shown without a camera. */
     fun scanPage(): Pair<Bitmap, List<TextLineBox>> {
         val bitmap = Bitmap.createBitmap(1000, 1400, Bitmap.Config.ARGB_8888)
@@ -107,9 +120,35 @@ internal object Samples {
         return bitmap to boxes
     }
 
+    val ramen = nihongo.copy(
+        termId = 7,
+        expression = "ラーメン",
+        reading = "らーめん",
+        ruby = Furigana.align("ラーメン", "らーめん"),
+        tags = listOf(EntryTag("n", "Noun")),
+        glossary = glossary("""["ramen (Chinese-style noodles)"]"""),
+        frequency = 3410.0,
+    )
+
+    val oishii = taberu.copy(
+        termId = 8,
+        expression = "美味しい",
+        reading = "おいしい",
+        ruby = Furigana.align("美味しい", "おいしい"),
+        tags = listOf(EntryTag("adj-i", "I-adjective")),
+        glossary = glossary("""["delicious", "tasty", "sweet"]"""),
+        frequency = 980.0,
+    )
+
+    val oishikatta = oishii.copy(
+        termId = 9,
+        deinflection = "美味しかった",
+        deinflectionReasons = listOf("past"),
+    )
+
     val scanWords = listOf(
-        ScanWord("ラーメン", 0, 4, listOf(nihongo.copy(expression = "ラーメン", reading = "らーめん", ruby = Furigana.align("ラーメン", ""), tags = listOf(EntryTag("n", "Noun")), glossary = glossary("""["ramen (Chinese-style noodles)"]"""), frequency = 3410.0))),
+        ScanWord("ラーメン", 0, 4, listOf(ramen)),
         ScanWord("を", 4, 5, emptyList()),
-        ScanWord("食べた", 5, 8, listOf(taberareta.copy(deinflection = "食べた"))),
+        ScanWord("食べた", 5, 8, listOf(tabeta)),
     )
 }

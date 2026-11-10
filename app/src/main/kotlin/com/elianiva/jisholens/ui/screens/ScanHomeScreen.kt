@@ -17,6 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CameraAlt
+import androidx.compose.material.icons.rounded.CenterFocusStrong
 import androidx.compose.material.icons.rounded.PhotoLibrary
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.Icon
@@ -151,7 +152,62 @@ fun ScanHomeContent(
             content = MaterialTheme.colorScheme.onSecondaryContainer,
             onClick = if (hasDictionary) onGallery else onOpenDictionaries,
         )
+        ScreenLensCard(
+            hasDictionary = hasDictionary,
+            onOpenDictionaries = onOpenDictionaries,
+        )
     }
+    }
+}
+
+/**
+ * The screen lens is a Quick Settings tile, not a button here: opening this screen
+ * makes Jisho Lens the foreground app, so a capture started from here would photograph
+ * Jisho Lens. The card explains the tile and asks the system to add it where it can.
+ */
+@Composable
+private fun ScreenLensCard(
+    hasDictionary: Boolean,
+    onOpenDictionaries: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.largeIncreased,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+    ) {
+        Column(Modifier.padding(20.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.CenterFocusStrong,
+                    contentDescription = null,
+                    modifier = Modifier.size(28.dp),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+                Text("Read the screen you are looking at", style = MaterialTheme.typography.titleMediumEmphasized)
+            }
+            Text(
+                text = "Add the Screen lens tile to Quick settings, then tap it in any app. It captures one frame and every word on it becomes tappable.",
+                modifier = Modifier.padding(top = 8.dp),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (!hasDictionary) {
+                TextButton(onClick = onOpenDictionaries, modifier = Modifier.padding(top = 4.dp)) {
+                    Text("Set up a dictionary first")
+                }
+            } else {
+                Text(
+                    text = "Open Quick settings, tap Edit, then drag Screen lens into the tiles.",
+                    modifier = Modifier.padding(top = 10.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
     }
 }
 

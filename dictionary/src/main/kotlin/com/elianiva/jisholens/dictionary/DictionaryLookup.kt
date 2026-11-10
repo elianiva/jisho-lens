@@ -26,13 +26,16 @@ data class TermResult(
     val glossaryText: String get() = Glossary.text(glossary)
 }
 
-/** A word found by [DictionaryLookup.scan], with its range in the source text. */
+/** A word found by [DictionaryLookup.scan] or [DictionaryLookup.scanAt], with its range in the text. */
 data class ScanMatch(
     val surface: String,
     val start: Int,
     val end: Int,
     val results: List<TermResult>,
 )
+
+/** One prefix that starts at the tapped offset, and whether it is a dictionary headword itself. */
+private class RankedCandidate(val match: ScanMatch, val exact: Boolean)
 
 /** One kanji row. */
 data class KanjiResult(
@@ -113,18 +116,11 @@ class DictionaryLookup(private val database: SqliteDatabase) {
 
         val byStart = HashMap<Int, MutableList<ScanMatch>>()
         for ((candidate, ranges) in rangesByCandidate) {
-            val results = ArrayList<TermResult>(limitPerWord)
-            val seen = HashSet<Long>()
-            exact[candidate].orEmpty().forEach { term ->
-                if (seen.add(term.termId)) results.add(term)
-            }
-            deinflected[candidate].orEmpty().forEach { term ->
-                if (seen.add(term.termId) && results.size < limitPerWord) results.add(term)
-            }
+            val results = mergeResults(exact[candidate], deinflected[candidate], limitPerWord)
             if (results.isEmpty()) continue
             for (range in ranges) {
                 byStart.getOrPut(range.first) { ArrayList() }
-                    .add(ScanMatch(candidate, range.first, range.last + 1, results.take(limitPerWord)))
+                    .add(ScanMatch(candidate, range.first, range.last + 1, results))
             }
         }
 
@@ -140,6 +136,89 @@ class DictionaryLookup(private val database: SqliteDatabase) {
             }
         }
         return matches
+    }
+
+    /**
+     * Collects the words that start at [offset], so a tap can offer alternatives.
+     *
+     * [scan] keeps only the longest match at each position. A tap needs the shorter
+     * prefixes too: in 日本語 the reader may mean 日本語, 日本, or 日. Every Japanese
+     * prefix up to [maxLength] code points is queried in one batch, exactly as [scan]
+     * does, and the candidates come back ordered by:
+     *
+     *  1. a prefix that is itself a headword, before one that only matches after
+     *     deinflection;
+     *  2. the longer surface first;
+     *  3. the higher term score, then dictionary priority.
+     *
+     * The entries inside a candidate keep exact matches before deinflected ones. The
+     * order is lexical on purpose: frequency ranking belongs to the caller, which
+     * already resolves `term_meta`.
+     */
+    fun scanAt(text: String, offset: Int, maxLength: Int = 12, limit: Int = 8): List<ScanMatch> {
+        if (offset !in text.indices || maxLength <= 0 || limit <= 0) return emptyList()
+        if (!FtsText.isJapanese(text.codePointAt(offset))) return emptyList()
+
+        val ranges = ArrayList<IntRange>(maxLength)
+        var end = offset
+        var length = 0
+        while (end < text.length && length < maxLength) {
+            val next = text.codePointAt(end)
+            if (!FtsText.isJapanese(next)) break
+            end += Character.charCount(next)
+            length++
+            ranges.add(offset until end)
+        }
+        val candidates = ranges.map { text.substring(it.first, it.last + 1) }
+        val exact = exactCandidateResults(candidates, limit)
+        val deinflected = deinflectedCandidateResults(candidates, limit)
+
+        val ranked = ArrayList<RankedCandidate>(ranges.size)
+        for ((index, range) in ranges.withIndex()) {
+            val surface = candidates[index]
+            val exactResults = exact[surface]
+            val results = mergeResults(exactResults, deinflected[surface], limit)
+            if (results.isEmpty()) continue
+            ranked.add(
+                RankedCandidate(
+                    match = ScanMatch(surface, range.first, range.last + 1, results),
+                    exact = !exactResults.isNullOrEmpty(),
+                ),
+            )
+        }
+        return compressStems(ranked)
+            .sortedWith(
+                compareByDescending<RankedCandidate> { it.exact }
+                    .thenByDescending { it.match.end - it.match.start }
+                    .thenByDescending { it.match.results.firstOrNull()?.score ?: 0.0 },
+            )
+            .take(limit)
+            .map { it.match }
+    }
+
+    /**
+     * Keeps the alternatives that add something. Shorter deinflected prefixes are
+     * stems of the longest one: 食べさせられ and 食べさせ both reach 食べる through
+     * the same rule chain, so only 食べさせられた is worth offering. A headword
+     * candidate is never dropped, and a deinflected prefix that adds an entry is kept.
+     */
+    private fun compressStems(candidates: List<RankedCandidate>): List<RankedCandidate> {
+        val exact = candidates.filter { it.exact }
+        val deinflected = candidates.filterNot { it.exact }
+            .sortedByDescending { it.match.end - it.match.start }
+        val longest = deinflected.firstOrNull() ?: return exact
+        val offered = exact.flatMapTo(HashSet()) { candidate -> candidate.match.results.map { it.termId } }
+        offered.addAll(longest.match.results.map { it.termId })
+        val kept = ArrayList<RankedCandidate>(candidates.size)
+        kept.addAll(exact)
+        kept.add(longest)
+        for (candidate in deinflected.drop(1)) {
+            val ids = candidate.match.results.mapTo(HashSet()) { it.termId }
+            if (offered.containsAll(ids)) continue
+            offered.addAll(ids)
+            kept.add(candidate)
+        }
+        return kept
     }
 
     fun search(query: String, limit: Int = 50): List<TermResult> {
@@ -196,6 +275,23 @@ class DictionaryLookup(private val database: SqliteDatabase) {
                 },
             ),
         )
+    }
+
+    /** Exact entries first, then deinflected ones, without repeating a term. */
+    private fun mergeResults(
+        exact: List<TermResult>?,
+        deinflected: List<TermResult>?,
+        limit: Int,
+    ): List<TermResult> {
+        val results = ArrayList<TermResult>(limit)
+        val seen = HashSet<Long>()
+        exact.orEmpty().forEach { term ->
+            if (seen.add(term.termId)) results.add(term)
+        }
+        deinflected.orEmpty().forEach { term ->
+            if (results.size < limit && seen.add(term.termId)) results.add(term)
+        }
+        return results
     }
 
     private fun exactCandidateResults(

@@ -36,6 +36,18 @@ class DictionaryRepository(private val database: DictionaryDatabase) {
         matches.map { match -> match.toScanWord(entriesById) }
     }
 
+    /**
+     * The words that start at [offset] in [text], best first. A tap on a frozen screen
+     * uses this instead of [scan] so the card can offer 日本 alongside the longer
+     * 日本語 that [scan] would greedily keep.
+     */
+    suspend fun scanAt(text: String, offset: Int, limit: Int = 8): List<ScanWord> = onDb {
+        val matches = lookup.scanAt(text, offset, limit = limit)
+        val entriesById = entries(matches.flatMap { it.results })
+            .associateBy { it.termId }
+        matches.map { match -> match.toScanWord(entriesById) }
+    }
+
     suspend fun setEnabled(id: Long, enabled: Boolean) = onDb { store.setEnabled(id, enabled) }
 
     suspend fun move(id: Long, delta: Int): Boolean = onDb { store.move(id, delta) }
@@ -88,7 +100,8 @@ class DictionaryRepository(private val database: DictionaryDatabase) {
                 glossary = term.glossary,
                 frequency = frequencies[term.expression],
                 score = term.score,
-                deinflection = term.deinflection?.text,
+                deinflection = term.deinflection?.originalText,
+                deinflectionReasons = term.deinflection?.reasons.orEmpty(),
             )
         }
     }

@@ -284,6 +284,39 @@ class YomitanImportTest {
         }
     }
 
+    @Test
+    fun `collects every word that starts at a tap`() {
+        Fixtures.database().use { database ->
+            Fixtures.archive(version3Files()).use { archive -> YomitanImporter(database).import(archive) }
+            val lookup = DictionaryLookup(database)
+
+            val tapped = lookup.scanAt("食べる人と飲む", 0)
+            assertEquals(listOf("食べる", "食べ"), tapped.map { it.surface })
+            assertEquals(0, tapped.first().start)
+            assertEquals(3, tapped.first().end)
+
+            val later = lookup.scanAt("食べる人と飲む", 5)
+            assertEquals(listOf("飲む"), later.map { it.surface })
+            assertEquals(5, later.single().start)
+            assertEquals(7, later.single().end)
+
+            // The conjugated surface is offered after the prefix that is a headword,
+            // and it carries the dictionary form and the rule chain.
+            val conjugated = lookup.scanAt("食べさせられた", 0)
+            assertEquals(listOf("食べ", "食べさせられた"), conjugated.map { it.surface })
+            val verb = conjugated.last().results.single()
+            assertEquals("食べる", verb.expression)
+            assertEquals("食べさせられた", verb.deinflection?.originalText)
+            assertTrue(verb.deinflection!!.reasons.isNotEmpty())
+
+            assertEquals(1, lookup.scanAt("食べる", 0, limit = 1).size)
+            assertTrue(lookup.scanAt("食べる", 3).isEmpty())
+            assertTrue(lookup.scanAt("abc", 0).isEmpty())
+            assertTrue(lookup.scanAt("", 0).isEmpty())
+            assertTrue(lookup.scanAt("食べる", 0, maxLength = 0).isEmpty())
+        }
+    }
+
     private fun count(database: SqliteDatabase, table: String): Int =
         (database.query("SELECT COUNT(*) FROM $table").first().first() as Number).toInt()
 

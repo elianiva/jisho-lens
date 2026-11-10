@@ -154,7 +154,7 @@ fun EntryCard(
 }
 
 @Composable
-private fun FrequencyPill(value: Double) {
+internal fun FrequencyPill(value: Double) {
     val text = formatFrequency(value)
     Surface(
         modifier = Modifier.semantics { contentDescription = "Frequency $text" },

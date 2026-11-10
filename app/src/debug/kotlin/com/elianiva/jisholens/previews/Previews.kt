@@ -21,9 +21,14 @@ import com.elianiva.jisholens.ui.components.WithoutDecorativeMotion
 import com.elianiva.jisholens.ui.screens.DictionariesContent
 import com.elianiva.jisholens.ui.screens.DictionaryStatus
 import com.elianiva.jisholens.ui.screens.OnboardingContent
+import com.elianiva.jisholens.domain.ScanWord
+import com.elianiva.jisholens.ui.screens.ReaderLine
 import com.elianiva.jisholens.ui.screens.ScanContent
 import com.elianiva.jisholens.ui.screens.ScanHomeContent
 import com.elianiva.jisholens.ui.screens.ScanUiState
+import com.elianiva.jisholens.ui.screens.ScreenScanContent
+import com.elianiva.jisholens.ui.screens.ScreenScanMessage
+import com.elianiva.jisholens.ui.screens.ScreenScanUiState
 import com.elianiva.jisholens.ui.screens.SearchContent
 import com.elianiva.jisholens.ui.screens.SearchUiState
 import com.elianiva.jisholens.ui.screens.SettingsContent
@@ -250,3 +255,137 @@ fun AppIcon() {
         )
     }
 }
+
+@Composable
+private fun Screen(
+    state: ScreenScanUiState,
+    dark: Boolean = false,
+) = Frame(dark) {
+    ScreenScanContent(
+        state = state,
+        loadMedia = noMedia,
+        onTap = { _, _ -> },
+        onSelectCandidate = {},
+        onToggleReader = {},
+        onSelectReaderWord = { _, _ -> },
+        onClearSelection = {},
+        onExpand = {},
+        onCollapse = {},
+        onSearchLine = {},
+        onCopy = {},
+        onRescan = {},
+        onClose = {},
+    )
+}
+
+private fun screenState(
+    message: ScreenScanMessage? = null,
+    candidates: List<ScanWord> = emptyList(),
+    selectedLine: Int = 1,
+    cardAtTop: Boolean = false,
+    loading: Boolean = false,
+    reader: Boolean = false,
+    readerLines: List<ReaderLine> = emptyList(),
+    expanded: Boolean = false,
+    withFrame: Boolean = true,
+): ScreenScanUiState {
+    val (bitmap, lines) = Samples.screenPage
+    return ScreenScanUiState(
+        frame = if (withFrame) bitmap else null,
+        lines = if (withFrame) lines else emptyList(),
+        loading = loading,
+        message = message,
+        selectedLine = if (message == null) selectedLine else -1,
+        candidates = candidates,
+        selectedCandidate = 0,
+        reader = reader,
+        readerLines = readerLines,
+        cardAtTop = cardAtTop,
+        expanded = expanded,
+    )
+}
+
+private val tappedTabeta = ScanWord("食べた", 5, 8, listOf(Samples.tabeta))
+
+@Preview(name = "Screen reader entry", widthDp = W, heightDp = H)
+@Composable
+fun ScreenReaderEntry() = Screen(screenState(candidates = listOf(tappedTabeta), cardAtTop = true))
+
+@Preview(name = "Screen reader entry dark", widthDp = W, heightDp = H)
+@Composable
+fun ScreenReaderEntryDark() = Screen(screenState(candidates = listOf(tappedTabeta), cardAtTop = true), dark = true)
+
+@Preview(name = "Screen reader alternatives", widthDp = W, heightDp = H)
+@Composable
+fun ScreenReaderAlternatives() = Screen(
+    screenState(
+        candidates = listOf(
+            ScanWord("食べ", 5, 7, listOf(Samples.taberu)),
+            tappedTabeta,
+            ScanWord("食べさせられた", 0, 7, listOf(Samples.taberareta)),
+        ),
+    ),
+    dark = true,
+)
+
+@Preview(name = "Screen reader no entry", widthDp = W, heightDp = H)
+@Composable
+fun ScreenReaderNoEntry() = Screen(screenState())
+
+@Preview(name = "Screen reader hint", widthDp = W, heightDp = H)
+@Composable
+fun ScreenReaderHint() = Screen(screenState(selectedLine = -1))
+
+@Preview(name = "Screen reader loading", widthDp = W, heightDp = H)
+@Composable
+fun ScreenReaderLoading() = Screen(screenState(selectedLine = -1, loading = true))
+
+@Preview(name = "Screen reader no text", widthDp = W, heightDp = H)
+@Composable
+fun ScreenReaderNoText() = Screen(screenState(message = ScreenScanMessage.NoText))
+
+@Preview(name = "Screen reader protected", widthDp = W, heightDp = H)
+@Composable
+fun ScreenReaderProtected() = Screen(screenState(message = ScreenScanMessage.Protected, withFrame = false))
+
+@Preview(name = "Screen reader consent denied", widthDp = W, heightDp = H)
+@Composable
+fun ScreenReaderConsent() = Screen(screenState(message = ScreenScanMessage.ConsentDenied, withFrame = false))
+
+@Preview(name = "Screen reader no frame", widthDp = W, heightDp = H)
+@Composable
+fun ScreenReaderNoFrame() = Screen(screenState(message = ScreenScanMessage.NoFrame, withFrame = false))
+
+@Preview(name = "Screen reader full entry", widthDp = W, heightDp = H)
+@Composable
+fun ScreenReaderExpanded() = Screen(
+    screenState(
+        candidates = listOf(tappedTabeta),
+        expanded = true,
+    ),
+)
+
+@Preview(name = "Screen reader page", widthDp = W, heightDp = H)
+@Composable
+fun ScreenReaderPage() = Screen(
+    screenState(
+        reader = true,
+        selectedLine = -1,
+        readerLines = listOf(
+            readerLine("昨日、友達と", emptyList()),
+            readerLine("ラーメンを食べた。", listOf("ラーメン" to Samples.ramen, "食べた" to Samples.tabeta)),
+            readerLine("とても美味しかった。", listOf("美味しかった" to Samples.oishikatta)),
+        ),
+    ),
+)
+
+/** One reader line whose words are placed at their real offsets in the text. */
+private fun readerLine(text: String, words: List<Pair<String, com.elianiva.jisholens.domain.Entry>>): ReaderLine =
+    ReaderLine(
+        text = text,
+        rect = android.graphics.Rect(),
+        words = words.map { (surface, entry) ->
+            val start = text.indexOf(surface).coerceAtLeast(0)
+            ScanWord(surface, start, start + surface.length, listOf(entry))
+        },
+    )

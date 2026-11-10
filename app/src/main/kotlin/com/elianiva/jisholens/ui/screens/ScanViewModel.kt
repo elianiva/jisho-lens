@@ -61,10 +61,7 @@ class ScanViewModel(
     }
 
     fun onTap(imageX: Float, imageY: Float) {
-        val lineIndex = _state.value.lines.indexOfFirst { line ->
-            imageX >= line.rect.left && imageX <= line.rect.right &&
-                imageY >= line.rect.top && imageY <= line.rect.bottom
-        }
+        val lineIndex = lineAt(_state.value.lines, imageX, imageY)
         if (lineIndex < 0) {
             _state.update { it.copy(selectedLine = -1, words = emptyList(), selectedWord = -1, entries = emptyList()) }
             return
@@ -118,13 +115,5 @@ class ScanViewModel(
             }
             _state.update { it.copy(entries = entries, selectedWord = -1) }
         }
-    }
-
-    private fun charIndexAt(line: TextLineBox, x: Float?): Int {
-        if (x == null || line.rect.width() <= 0) return 0
-        val element = line.elements.indexOfFirst { x >= it.left && x <= it.right }
-        if (element >= 0) return element.coerceAtMost(line.text.lastIndex.coerceAtLeast(0))
-        val ratio = ((x - line.rect.left) / line.rect.width()).coerceIn(0f, 0.999f)
-        return (ratio * line.text.length).toInt().coerceIn(0, line.text.lastIndex.coerceAtLeast(0))
     }
 }

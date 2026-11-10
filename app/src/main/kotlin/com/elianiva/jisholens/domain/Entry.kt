@@ -16,7 +16,10 @@ data class Entry(
     val glossary: JsonArray,
     val frequency: Double?,
     val score: Double,
+    /** The inflected surface that was looked up, when the entry was reached by deinflection. */
     val deinflection: String?,
+    /** The rules that were applied to reach the entry, such as causative and passive. */
+    val deinflectionReasons: List<String> = emptyList(),
 )
 
 data class ScanWord(

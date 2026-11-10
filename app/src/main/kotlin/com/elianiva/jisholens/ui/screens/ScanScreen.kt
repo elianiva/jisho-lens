@@ -65,8 +65,9 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.elianiva.jisholens.data.AppContainer
 import com.elianiva.jisholens.ui.components.EntryCard
+import com.elianiva.jisholens.ui.components.fitOrigin
+import com.elianiva.jisholens.ui.components.fitScale
 import kotlinx.coroutines.launch
-import kotlin.math.min
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -285,14 +286,4 @@ private fun ScanSheet(
     }
 }
 
-private fun fitScale(canvas: IntSize, width: Int, height: Int): Float {
-    if (canvas.width == 0 || canvas.height == 0 || width == 0 || height == 0) return 1f
-    return min(canvas.width.toFloat() / width, canvas.height.toFloat() / height)
-}
-
-private fun fitOrigin(canvas: IntSize, width: Int, height: Int, scale: Float): Offset {
-    val drawnWidth = width * scale
-    val drawnHeight = height * scale
-    return Offset((canvas.width - drawnWidth) / 2f, (canvas.height - drawnHeight) / 2f)
-}
 

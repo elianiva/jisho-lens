@@ -20,6 +20,7 @@ The native app does not read the 1.x database. Import a Yomitan `.zip` dictionar
 ## Features
 
 - Scan from the camera or the photo picker.
+- Read the screen you are looking at: add the Screen lens tile to Quick settings, tap it in any app, and every word on the captured frame becomes tappable. One frame per tap, no overlay permission, no accessibility service.
 - Tap a recognized line, then a dictionary word, to open its entry.
 - Search Japanese words, kanji, kana, and English glosses.
 - Deinflect conjugated input, so 食べさせられた finds 食べる.
@@ -28,12 +29,13 @@ The native app does not read the 1.x database. Import a Yomitan `.zip` dictionar
 - Material 3 Expressive design with Google Sans Flex. Light, dark, and system themes, with dynamic color on Android 12 and later and a blue fallback.
 - Share an image to the app, or select text in another app and use the Look up action.
 - No storage permission. The app uses the system file picker and a foreground service for imports.
+- A captured frame lives in memory only, and the reader is `FLAG_SECURE`, so the page never reaches the recents thumbnail or a screenshot. Closing the reader stops the capture session.
 
 ## Limitations
 
 - The native app is a preview. It has no signed stable release yet.
 - Vertical manga text and stylized fonts are harder for ML Kit. Crop and zoom the image when recognition is poor.
-- Screen scanning from a Quick Settings tile and the accessibility overlay are not implemented.
+- The screen lens captures one frame with the system MediaProjection consent. A protected window, such as a banking app or DRM video, captures as a blank frame. Live reading without a capture, over an accessibility service, is not implemented.
 - Anki export, history, bookmarks, and a kanji screen are not part of this version.
 - The app ships no dictionary. Jitendex and JMdict are available from their publishers and are licensed under CC BY-SA 4.0.
 
