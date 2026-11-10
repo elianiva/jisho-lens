@@ -28,3 +28,11 @@ remains under the MIT License.
 
 The Apache License, Version 2.0 text is in
 `dictionary/src/main/resources/deconjugation/LICENSE-APACHE-2.0.txt`.
+
+## Google Sans Flex
+
+The app bundles a Latin subset of Google Sans Flex (weight and roundness axes) in `app/src/main/res/font/google_sans_flex.ttf`.
+
+Copyright 2015 The Google Sans Flex Authors (https://github.com/googlefonts/googlesans-flex)
+
+It is licensed under the SIL Open Font License, Version 1.1, available at https://openfontlicense.org. The full text is in the upstream repository: https://github.com/google/fonts/blob/main/ofl/googlesansflex/OFL.txt

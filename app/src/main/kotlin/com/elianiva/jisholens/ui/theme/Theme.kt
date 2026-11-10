@@ -2,16 +2,19 @@ package com.elianiva.jisholens.ui.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MaterialExpressiveTheme
+import androidx.compose.material3.MotionScheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalContext
 
-val LocalDarkTheme = staticCompositionLocalOf { false }
-
+/**
+ * Material 3 Expressive theme: spring-based motion, the expanded shape scale and the emphasized
+ * type scale. Wallpaper-derived dynamic color is used on Android 12 and later; older devices and
+ * people who turn it off get the static indigo scheme.
+ */
 @Composable
 fun JishoLensTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -25,11 +28,11 @@ fun JishoLensTheme(
         darkTheme -> DarkColors
         else -> LightColors
     }
-    CompositionLocalProvider(LocalDarkTheme provides darkTheme) {
-        MaterialTheme(
-            colorScheme = colors,
-            typography = AppTypography,
-            content = content,
-        )
-    }
+    MaterialExpressiveTheme(
+        colorScheme = colors,
+        motionScheme = MotionScheme.expressive(),
+        shapes = Shapes(),
+        typography = AppTypography,
+        content = content,
+    )
 }

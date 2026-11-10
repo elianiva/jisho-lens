@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,6 +27,7 @@ import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.LinkInteractionListener
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -32,7 +35,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.elianiva.jisholens.data.DictionaryRepository
+import com.elianiva.jisholens.ui.theme.JapaneseLocale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
@@ -41,6 +44,11 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
+
+/** Body text for definitions: large enough to read a dense gloss, and pinned to Japanese glyphs. */
+@Composable
+private fun glossaryStyle(): TextStyle =
+    MaterialTheme.typography.bodyLarge.copy(localeList = JapaneseLocale)
 
 private val blockTags = setOf(
     "ul", "ol", "li", "div", "p", "table", "thead", "tbody", "tfoot", "tr", "td", "th",
@@ -56,7 +64,7 @@ private val blockTags = setOf(
 fun GlossaryContent(
     element: JsonElement,
     dictionaryId: Long,
-    repository: DictionaryRepository,
+    loadMedia: suspend (Long, String) -> ByteArray?,
     onQuery: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -64,25 +72,25 @@ fun GlossaryContent(
         JsonNull -> Unit
         is JsonArray -> {
             if (element.any(::isBlock)) {
-                Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     element.forEach { child ->
-                        GlossaryContent(child, dictionaryId, repository, onQuery)
+                        GlossaryContent(child, dictionaryId, loadMedia, onQuery)
                     }
                 }
             } else {
                 Text(
-                    text = inline(element, onQuery),
+                    text = inline(element, onQuery, MaterialTheme.colorScheme.primary),
                     modifier = modifier,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = glossaryStyle(),
                     color = MaterialTheme.colorScheme.onSurface,
                 )
             }
         }
-        is JsonObject -> BlockElement(element, dictionaryId, repository, onQuery, modifier)
+        is JsonObject -> BlockElement(element, dictionaryId, loadMedia, onQuery, modifier)
         is JsonPrimitive -> Text(
             text = element.contentOrNull.orEmpty(),
             modifier = modifier,
-            style = MaterialTheme.typography.bodySmall,
+            style = glossaryStyle(),
             color = MaterialTheme.colorScheme.onSurface,
         )
     }
@@ -92,7 +100,7 @@ fun GlossaryContent(
 private fun BlockElement(
     element: JsonObject,
     dictionaryId: Long,
-    repository: DictionaryRepository,
+    loadMedia: suspend (Long, String) -> ByteArray?,
     onQuery: (String) -> Unit,
     modifier: Modifier,
 ) {
@@ -100,20 +108,20 @@ private fun BlockElement(
     val content = element["content"]
     when (tag) {
         "ul", "ol" -> {
-            Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 (content as? JsonArray)?.forEachIndexed { index, child ->
                     val item = child as? JsonObject
                     Row(modifier = Modifier.fillMaxWidth()) {
                         Text(
                             text = if (tag == "ol") "${index + 1}." else "\u2022",
-                            modifier = Modifier.padding(end = 6.dp),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(end = 10.dp),
+                            style = glossaryStyle().copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.primary,
                         )
                         GlossaryContent(
                             element = item?.get("content") ?: child,
                             dictionaryId = dictionaryId,
-                            repository = repository,
+                            loadMedia = loadMedia,
                             onQuery = onQuery,
                             modifier = Modifier.weight(1f),
                         )
@@ -124,26 +132,31 @@ private fun BlockElement(
         "li" -> GlossaryContent(
             element = content ?: JsonNull,
             dictionaryId = dictionaryId,
-            repository = repository,
+            loadMedia = loadMedia,
             onQuery = onQuery,
             modifier = modifier,
         )
-        "table" -> TableElement(element, dictionaryId, repository, onQuery, modifier)
-        "img" -> DictionaryImage(element, dictionaryId, repository, modifier)
+        "table" -> TableElement(element, dictionaryId, loadMedia, onQuery, modifier)
+        "img" -> DictionaryImage(element, dictionaryId, loadMedia, modifier)
         "ruby" -> {
             val segments = rubySegments(element)
-            RubyText(segments = segments, modifier = modifier, baseSize = 16.sp, readingSize = 9.sp)
+            RubyText(
+                segments = segments,
+                modifier = modifier,
+                baseStyle = glossaryStyle(),
+                readingStyle = MaterialTheme.typography.labelSmall,
+            )
         }
         "details" -> {
             Column(modifier) {
                 (content as? JsonArray)?.forEach { child ->
-                    GlossaryContent(child, dictionaryId, repository, onQuery)
+                    GlossaryContent(child, dictionaryId, loadMedia, onQuery)
                 }
             }
         }
         else -> {
             if (content != null) {
-                GlossaryContent(content, dictionaryId, repository, onQuery, modifier)
+                GlossaryContent(content, dictionaryId, loadMedia, onQuery, modifier)
             }
         }
     }
@@ -153,7 +166,7 @@ private fun BlockElement(
 private fun TableElement(
     element: JsonObject,
     dictionaryId: Long,
-    repository: DictionaryRepository,
+    loadMedia: suspend (Long, String) -> ByteArray?,
     onQuery: (String) -> Unit,
     modifier: Modifier,
 ) {
@@ -166,7 +179,7 @@ private fun TableElement(
                     GlossaryContent(
                         element = (cell as? JsonObject)?.get("content") ?: cell,
                         dictionaryId = dictionaryId,
-                        repository = repository,
+                        loadMedia = loadMedia,
                         onQuery = onQuery,
                         modifier = Modifier.weight(1f).padding(end = 4.dp),
                     )
@@ -180,13 +193,13 @@ private fun TableElement(
 private fun DictionaryImage(
     element: JsonObject,
     dictionaryId: Long,
-    repository: DictionaryRepository,
+    loadMedia: suspend (Long, String) -> ByteArray?,
     modifier: Modifier,
 ) {
     val path = (element["path"] as? JsonPrimitive)?.contentOrNull ?: return
     val bitmap by produceState<ImageBitmap?>(initialValue = null, dictionaryId, path) {
         value = withContext(Dispatchers.IO) {
-            repository.media(dictionaryId, path)
+            loadMedia(dictionaryId, path)
                 ?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
                 ?.asImageBitmap()
         }
@@ -198,7 +211,8 @@ private fun DictionaryImage(
             modifier = modifier
                 .fillMaxWidth()
                 .heightIn(max = 220.dp)
-                .padding(vertical = 4.dp),
+                .padding(vertical = 4.dp)
+                .clip(RoundedCornerShape(12.dp)),
             contentScale = ContentScale.FillWidth,
         )
     }
@@ -214,17 +228,18 @@ private fun isBlock(element: JsonElement): Boolean = when (element) {
 private fun tagOf(element: JsonObject): String =
     (element["tag"] as? JsonPrimitive)?.contentOrNull.orEmpty()
 
-private fun inline(element: JsonElement, onQuery: (String) -> Unit): AnnotatedString = buildAnnotatedString {
-    appendInline(element, onQuery)
+private fun inline(element: JsonElement, onQuery: (String) -> Unit, linkColor: Color): AnnotatedString =
+    buildAnnotatedString {
+    appendInline(element, onQuery, linkColor)
 }
 
-private fun AnnotatedString.Builder.appendInline(element: JsonElement, onQuery: (String) -> Unit) {
+private fun AnnotatedString.Builder.appendInline(element: JsonElement, onQuery: (String) -> Unit, linkColor: Color) {
     when (element) {
         JsonNull -> Unit
         is JsonPrimitive -> append(element.contentOrNull.orEmpty())
         is JsonArray -> element.forEachIndexed { index, child ->
             if (index > 0) append(' ')
-            appendInline(child, onQuery)
+            appendInline(child, onQuery, linkColor)
         }
         is JsonObject -> {
             val tag = tagOf(element)
@@ -237,13 +252,13 @@ private fun AnnotatedString.Builder.appendInline(element: JsonElement, onQuery: 
                     val reading = children.firstOrNull {
                         tagOf(it as? JsonObject ?: JsonObject(emptyMap())) == "rt"
                     }
-                    appendInline(base ?: JsonNull, onQuery)
-                    val readingText = reading?.let { inline(it, onQuery).text }.orEmpty()
+                    appendInline(base ?: JsonNull, onQuery, linkColor)
+                    val readingText = reading?.let { inline(it, onQuery, linkColor).text }.orEmpty()
                     if (readingText.isNotBlank()) append("（$readingText）")
                 }
                 "a" -> {
                     val href = (element["href"] as? JsonPrimitive)?.contentOrNull
-                    val text = inline(element["content"] ?: JsonNull, onQuery)
+                    val text = inline(element["content"] ?: JsonNull, onQuery, linkColor)
                     if (href == null) {
                         append(text)
                     } else {
@@ -252,11 +267,11 @@ private fun AnnotatedString.Builder.appendInline(element: JsonElement, onQuery: 
                         val link: LinkAnnotation = if (internal != null) {
                             LinkAnnotation.Clickable(
                                 tag = href,
-                                styles = linkStyles(),
+                                styles = linkStyles(linkColor),
                                 linkInteractionListener = LinkInteractionListener { onQuery(internal) },
                             )
                         } else {
-                            LinkAnnotation.Url(href, linkStyles())
+                            LinkAnnotation.Url(href, linkStyles(linkColor))
                         }
                         when (link) {
                             is LinkAnnotation.Url -> addLink(link, 0, length)
@@ -266,7 +281,7 @@ private fun AnnotatedString.Builder.appendInline(element: JsonElement, onQuery: 
                 }
                 else -> {
                     applyElementStyle(element) {
-                        appendInline(element["content"] ?: JsonNull, onQuery)
+                        appendInline(element["content"] ?: JsonNull, onQuery, linkColor)
                     }
                 }
             }
@@ -297,9 +312,9 @@ private inline fun AnnotatedString.Builder.applyElementStyle(
     withStyle(span) { block() }
 }
 
-private fun linkStyles(): TextLinkStyles = TextLinkStyles(
+private fun linkStyles(color: Color): TextLinkStyles = TextLinkStyles(
     style = SpanStyle(
-        color = androidx.compose.ui.graphics.Color(0xFF1B6EF3),
+        color = color,
         textDecoration = TextDecoration.Underline,
     ),
 )

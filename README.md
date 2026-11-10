@@ -25,7 +25,7 @@ The native app does not read the 1.x database. Import a Yomitan `.zip` dictionar
 - Deinflect conjugated input, so 食べさせられた finds 食べる.
 - Import several Yomitan dictionaries, enable them, reorder them, and remove them.
 - Show tags, glosses, cross references, images, and frequency data from the dictionary.
-- Light, dark, and system themes, with dynamic color on Android 12 and later.
+- Material 3 Expressive design with Google Sans Flex. Light, dark, and system themes, with dynamic color on Android 12 and later and a blue fallback.
 - Share an image to the app, or select text in another app and use the Look up action.
 - No storage permission. The app uses the system file picker and a foreground service for imports.
 
@@ -39,7 +39,7 @@ The native app does not read the 1.x database. Import a Yomitan `.zip` dictionar
 
 ## Tech stack
 
-- Kotlin 2.4 and Jetpack Compose with Material 3
+- Kotlin 2.4 and Jetpack Compose with Material 3 Expressive (`material3` 1.5.0-alpha18)
 - ViewModel and StateFlow for screen state
 - Navigation Compose with type-safe routes
 - DataStore for settings
@@ -71,17 +71,15 @@ Build a minified, unsigned release APK:
 
 The preview flavor uses `com.elianiva.preview`. The stable flavor uses `com.elianiva`.
 
-### Screenshot tests
+### Previews and screenshot tests
 
-The Compose screenshot tests render on the JVM with Robolectric and Roborazzi. Record them with:
+Every screen has a stateless `*Content` composable and a `@Preview` in `app/src/debug/.../previews`. The screenshot test renders each preview on the JVM with Robolectric and Roborazzi, so adding a preview adds a screenshot. Record them with:
 
 ```sh
-./gradlew :app:testPreviewDebugUnitTest \
-  -Proborazzi.test.record=true \
-  --tests com.elianiva.jisholens.ScreenshotTest
+./gradlew :app:testPreviewDebugUnitTest -Proborazzi.test.record=true
 ```
 
-The images land in `app/build/screenshots`.
+The images land in `app/build/screenshots`: `previews/` for each preview and `app/` for the running app, including a tablet-width window with the navigation rail.
 
 ## Dictionary tooling
 

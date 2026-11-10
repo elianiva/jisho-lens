@@ -1,37 +1,57 @@
 package com.elianiva.jisholens.ui.screens
 
-import androidx.compose.foundation.clickable
+import android.content.ActivityNotFoundException
+import android.os.Build
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.Palette
-import androidx.compose.material.icons.outlined.Translate
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.rounded.LibraryBooks
+import androidx.compose.material.icons.automirrored.rounded.ManageSearch
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.BugReport
+import androidx.compose.material.icons.rounded.Code
+import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.Wallpaper
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LargeFlexibleTopAppBar
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.TonalToggleButton
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.elianiva.jisholens.BuildConfig
 import com.elianiva.jisholens.data.AppContainer
 import com.elianiva.jisholens.data.AppTheme
 import com.elianiva.jisholens.data.Settings
+import com.elianiva.jisholens.ui.components.SectionLabel
+import com.elianiva.jisholens.ui.components.segmentedItemColors
+import com.elianiva.jisholens.ui.components.SegmentedList
 import kotlinx.coroutines.launch
 
 @Composable
@@ -42,124 +62,168 @@ fun SettingsScreen(
     val settings by container.settings.settings.collectAsStateWithLifecycle(initialValue = Settings())
     val dictionaries by container.dictionaries.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
-    var showTheme by remember { mutableStateOf(false) }
+    val uriHandler = LocalUriHandler.current
+    val context = LocalContext.current
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp),
-    ) {
-        item { SectionHeader("Appearance") }
-        item {
-            SettingsRow(
-                icon = { Icon(Icons.Outlined.Palette, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface) },
-                title = "Theme",
-                value = settings.theme.label,
-                onClick = { showTheme = true },
-            )
-        }
-        item { SectionHeader("Data") }
-        item {
-            SettingsRow(
-                icon = { Icon(Icons.Outlined.Translate, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface) },
-                title = "Dictionaries",
-                value = if (dictionaries.isEmpty()) "None imported" else "${dictionaries.size} imported",
-                onClick = onOpenDictionaries,
-            )
-        }
-        item { SectionHeader("Search") }
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Column(Modifier.weight(1f).padding(end = 16.dp)) {
-                    Text("Full-text search", style = MaterialTheme.typography.bodyLarge)
-                    Text(
-                        "Search inside readings and glosses. Slower on large dictionaries.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Switch(
-                    checked = settings.fullTextSearch,
-                    onCheckedChange = { enabled ->
-                        scope.launch { container.settings.setFullTextSearch(enabled) }
-                    },
-                )
-            }
+    fun open(url: String) {
+        try {
+            uriHandler.openUri(url)
+        } catch (_: IllegalArgumentException) {
+            android.widget.Toast.makeText(context, "No app can open this link", android.widget.Toast.LENGTH_SHORT).show()
+        } catch (_: ActivityNotFoundException) {
+            android.widget.Toast.makeText(context, "No app can open this link", android.widget.Toast.LENGTH_SHORT).show()
         }
     }
 
-    if (showTheme) {
-        AlertDialog(
-            onDismissRequest = { showTheme = false },
-            title = { Text("Choose a theme") },
-            text = {
-                Column {
-                    AppTheme.entries.forEach { theme ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    scope.launch { container.settings.setTheme(theme) }
-                                    showTheme = false
-                                }
-                                .padding(vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            RadioButton(
-                                selected = settings.theme == theme,
-                                onClick = {
-                                    scope.launch { container.settings.setTheme(theme) }
-                                    showTheme = false
-                                },
-                            )
-                            Text(theme.label, modifier = Modifier.padding(start = 8.dp))
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showTheme = false }) { Text("Close") }
-            },
-        )
-    }
-}
-
-@Composable
-private fun SectionHeader(title: String) {
-    Text(
-        text = title.uppercase(),
-        modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 20.dp, bottom = 6.dp),
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.primary,
+    SettingsContent(
+        settings = settings,
+        dictionarySummary = when {
+            dictionaries.isEmpty() -> "None imported"
+            dictionaries.none { it.enabled } -> "${dictionaries.size} imported, none on"
+            else -> "${dictionaries.count { it.enabled }} of ${dictionaries.size} on"
+        },
+        versionName = BuildConfig.VERSION_NAME,
+        dynamicColorAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
+        onTheme = { theme -> scope.launch { container.settings.setTheme(theme) } },
+        onDynamicColor = { scope.launch { container.settings.setDynamicColor(it) } },
+        onFullText = { scope.launch { container.settings.setFullTextSearch(it) } },
+        onOpenDictionaries = onOpenDictionaries,
+        onOpenLink = ::open,
     )
 }
 
 @Composable
-private fun SettingsRow(
-    icon: @Composable () -> Unit,
-    title: String,
-    value: String,
-    onClick: () -> Unit,
+fun SettingsContent(
+    settings: Settings,
+    dictionarySummary: String,
+    versionName: String,
+    dynamicColorAvailable: Boolean,
+    onTheme: (AppTheme) -> Unit,
+    onDynamicColor: (Boolean) -> Unit,
+    onFullText: (Boolean) -> Unit,
+    onOpenDictionaries: () -> Unit,
+    onOpenLink: (String) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 24.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        icon()
-        Column(Modifier.weight(1f).padding(start = 16.dp)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge)
-            Text(
-                value,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+    val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    Scaffold(
+        modifier = modifier.nestedScroll(scroll.nestedScrollConnection),
+        topBar = {
+            LargeFlexibleTopAppBar(
+                title = { Text("Settings") },
+                scrollBehavior = scroll,
             )
+        },
+    ) { padding ->
+        androidx.compose.foundation.layout.Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp),
+        ) {
+            SectionLabel("Dictionaries")
+            SegmentedList {
+                SegmentedListItem(
+                    onClick = onOpenDictionaries,
+                    shapes = ListItemDefaults.segmentedShapes(0, 1),
+                    colors = segmentedItemColors(),
+                    leadingContent = { RowIcon(Icons.AutoMirrored.Rounded.LibraryBooks) },
+                    supportingContent = { Text(dictionarySummary) },
+                    trailingContent = { Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null) },
+                    content = { Text("Manage dictionaries") },
+                )
+            }
+
+            SectionLabel("Appearance")
+            val appearanceCount = if (dynamicColorAvailable) 2 else 1
+            SegmentedList {
+                SegmentedListItem(
+                    onClick = {},
+                    shapes = ListItemDefaults.segmentedShapes(0, appearanceCount),
+                    colors = segmentedItemColors(),
+                    leadingContent = { RowIcon(Icons.Rounded.Palette) },
+                    supportingContent = {
+                        Row(
+                            Modifier.fillMaxWidth().padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                        ) {
+                            AppTheme.entries.forEachIndexed { index, theme ->
+                                TonalToggleButton(
+                                    checked = settings.theme == theme,
+                                    onCheckedChange = { onTheme(theme) },
+                                    modifier = Modifier.weight(1f).semantics { role = Role.RadioButton },
+                                    shapes = when (index) {
+                                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                        AppTheme.entries.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                                    },
+                                ) {
+                                    Text(theme.label)
+                                }
+                            }
+                        }
+                    },
+                    content = { Text("Theme") },
+                )
+                if (dynamicColorAvailable) {
+                    SegmentedListItem(
+                        onClick = { onDynamicColor(!settings.dynamicColor) },
+                        shapes = ListItemDefaults.segmentedShapes(1, 2),
+                    colors = segmentedItemColors(),
+                        leadingContent = { RowIcon(Icons.Rounded.Wallpaper) },
+                        trailingContent = { Switch(checked = settings.dynamicColor, onCheckedChange = null) },
+                        content = { Text("Wallpaper colors") },
+                    )
+                }
+            }
+
+            SectionLabel("Search")
+            SegmentedList {
+                SegmentedListItem(
+                    onClick = { onFullText(!settings.fullTextSearch) },
+                    shapes = ListItemDefaults.segmentedShapes(0, 1),
+                    colors = segmentedItemColors(),
+                    leadingContent = { RowIcon(Icons.AutoMirrored.Rounded.ManageSearch) },
+                    trailingContent = { Switch(checked = settings.fullTextSearch, onCheckedChange = null) },
+                    content = { Text("Search inside definitions") },
+                )
+            }
+
+            SectionLabel("About")
+            SegmentedList {
+                SegmentedListItem(
+                    onClick = { onOpenLink("https://github.com/elianiva/jisho-lens") },
+                    shapes = ListItemDefaults.segmentedShapes(0, 3),
+                    colors = segmentedItemColors(),
+                    leadingContent = { RowIcon(Icons.Rounded.Code) },
+                    trailingContent = { Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null) },
+                    content = { Text("Jisho Lens $versionName") },
+                )
+                SegmentedListItem(
+                    onClick = { onOpenLink("https://github.com/elianiva/jisho-lens/issues") },
+                    shapes = ListItemDefaults.segmentedShapes(1, 3),
+                    colors = segmentedItemColors(),
+                    leadingContent = { RowIcon(Icons.Rounded.BugReport) },
+                    trailingContent = { Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null) },
+                    content = { Text("Report an issue") },
+                )
+                SegmentedListItem(
+                    onClick = { onOpenLink("https://github.com/elianiva/jisho-lens/blob/master/THIRD_PARTY_NOTICES.md") },
+                    shapes = ListItemDefaults.segmentedShapes(2, 3),
+                    colors = segmentedItemColors(),
+                    leadingContent = { RowIcon(Icons.Rounded.Description) },
+                    supportingContent = { Text("Jitendex and JMdict are CC BY-SA 4.0") },
+                    trailingContent = { Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null) },
+                    content = { Text("Licenses and attribution") },
+                )
+            }
+            Spacer(Modifier.height(32.dp))
         }
-        Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
     }
+}
+
+@Composable
+private fun RowIcon(icon: ImageVector) {
+    Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
 }

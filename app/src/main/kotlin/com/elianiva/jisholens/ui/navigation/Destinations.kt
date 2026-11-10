@@ -3,16 +3,13 @@ package com.elianiva.jisholens.ui.navigation
 import kotlinx.serialization.Serializable
 
 @Serializable
-data object HomeRoute
-
-@Serializable
 data object SearchRoute
 
 @Serializable
-data object SettingsRoute
+data object ScanHomeRoute
 
 @Serializable
-data object AboutRoute
+data object SettingsRoute
 
 @Serializable
 data object DictionariesRoute

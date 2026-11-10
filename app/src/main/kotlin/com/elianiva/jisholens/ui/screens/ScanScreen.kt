@@ -14,19 +14,25 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.BottomSheetScaffold
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.ContainedLoadingIndicator
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.SheetValue
@@ -79,6 +85,28 @@ fun ScanScreen(
         },
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
+    ScanContent(
+        state = state,
+        loadMedia = container.repository::media,
+        onTap = viewModel::onTap,
+        onSelectWord = viewModel::selectWord,
+        onQuery = viewModel::searchLink,
+        onBack = onBack,
+    )
+}
+
+/** The picture with its recognised lines, and a sheet of words and entries that rides over it. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ScanContent(
+    state: ScanUiState,
+    loadMedia: suspend (Long, String) -> ByteArray?,
+    onTap: (imageX: Float, imageY: Float) -> Unit,
+    onSelectWord: (Int) -> Unit,
+    onQuery: (String) -> Unit,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val scaffoldState = rememberBottomSheetScaffoldState()
     val scope = rememberCoroutineScope()
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
@@ -104,16 +132,18 @@ fun ScanScreen(
     }
 
     BottomSheetScaffold(
+        modifier = modifier,
         scaffoldState = scaffoldState,
-        sheetPeekHeight = 108.dp,
+        sheetPeekHeight = 132.dp,
         containerColor = Color.Black,
-        sheetContainerColor = MaterialTheme.colorScheme.surface,
+        sheetContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        sheetShape = MaterialTheme.shapes.extraExtraLarge.copy(bottomStart = androidx.compose.foundation.shape.ZeroCornerSize, bottomEnd = androidx.compose.foundation.shape.ZeroCornerSize),
         sheetContent = {
             ScanSheet(
                 state = state,
-                container = container,
-                onSelectWord = viewModel::selectWord,
-                onQuery = viewModel::searchLink,
+                loadMedia = loadMedia,
+                onSelectWord = onSelectWord,
+                onQuery = onQuery,
             )
         },
     ) { padding ->
@@ -136,9 +166,9 @@ fun ScanScreen(
                             val base = fitScale(canvasSize, bitmap.width, bitmap.height)
                             val origin = fitOrigin(canvasSize, bitmap.width, bitmap.height, base)
                             val total = base * currentZoom
-                            viewModel.onTap(
-                                imageX = (tap.x - origin.x - currentPan.x) / total,
-                                imageY = (tap.y - origin.y - currentPan.y) / total,
+                            onTap(
+                                (tap.x - origin.x - currentPan.x) / total,
+                                (tap.y - origin.y - currentPan.y) / total,
                             )
                         }
                     },
@@ -159,7 +189,7 @@ fun ScanScreen(
                     state.lines.forEachIndexed { index, line ->
                         val selected = index == state.selectedLine
                         drawRoundRect(
-                            color = if (selected) Color(0xFF4C8DFF).copy(alpha = 0.30f) else Color.White.copy(alpha = 0.20f),
+                            color = if (selected) Color(0xFF8C9EFF).copy(alpha = 0.45f) else Color.White.copy(alpha = 0.22f),
                             topLeft = Offset(line.rect.left - 4f, line.rect.top - 4f),
                             size = Size(line.rect.width().toFloat() + 8f, line.rect.height().toFloat() + 8f),
                             cornerRadius = CornerRadius(8f),
@@ -169,7 +199,7 @@ fun ScanScreen(
             }
 
             if (state.loading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = Color.White)
+                ContainedLoadingIndicator(modifier = Modifier.align(Alignment.Center).size(72.dp))
             }
             state.error?.let { error ->
                 Text(
@@ -180,24 +210,23 @@ fun ScanScreen(
             }
             if (!state.loading && state.error == null && state.lines.isEmpty()) {
                 Text(
-                    text = "No Japanese text was recognised.\nTry scanning a different image.",
+                    text = "No Japanese text was recognised.\nTry a different image.",
                     modifier = Modifier.align(Alignment.Center).padding(24.dp),
                     color = Color.White,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleLargeEmphasized,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 )
             }
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            FilledTonalIconButton(
+                onClick = onBack,
+                modifier = Modifier.statusBarsPadding().padding(12.dp),
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = Color.Black.copy(alpha = 0.55f),
+                    contentColor = Color.White,
+                ),
             ) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back", tint = Color.White)
-                }
-                Text("Scan", color = Color.White, style = MaterialTheme.typography.titleMedium)
+                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
             }
         }
     }
@@ -206,16 +235,16 @@ fun ScanScreen(
 @Composable
 private fun ScanSheet(
     state: ScanUiState,
-    container: AppContainer,
+    loadMedia: suspend (Long, String) -> ByteArray?,
     onSelectWord: (Int) -> Unit,
     onQuery: (String) -> Unit,
 ) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
         if (state.words.isEmpty()) {
             Text(
-                if (state.lines.isEmpty()) "Tap a line in the image to look up a word."
-                else "Tap a recognised line to see its words.",
-                style = MaterialTheme.typography.bodySmall,
+                "Tap a line",
+                modifier = Modifier.padding(vertical = 8.dp),
+                style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else {
@@ -224,7 +253,8 @@ private fun ScanSheet(
                     FilterChip(
                         selected = index == state.selectedWord,
                         onClick = { onSelectWord(index) },
-                        label = { Text(word.surface) },
+                        label = { Text(word.surface, style = MaterialTheme.typography.titleMedium.copy(localeList = com.elianiva.jisholens.ui.theme.JapaneseLocale)) },
+                        shape = androidx.compose.foundation.shape.CircleShape,
                     )
                 }
             }
@@ -239,7 +269,7 @@ private fun ScanSheet(
                 items(state.entries, key = { "${it.termId}:${it.dictionaryId}" }) { entry ->
                     EntryCard(
                         entry = entry,
-                        repository = container.repository,
+                        loadMedia = loadMedia,
                         onQuery = onQuery,
                     )
                 }
@@ -247,8 +277,8 @@ private fun ScanSheet(
         } else if (state.words.isNotEmpty() && state.selectedWord >= 0) {
             Text(
                 "No entry found for this word.",
-                modifier = Modifier.padding(top = 10.dp),
-                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 12.dp),
+                style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }

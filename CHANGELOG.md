@@ -9,10 +9,14 @@ All notable changes to this project will be documented in this file. See [standa
 * add the native Kotlin and Jetpack Compose app under `app/`
 * import Yomitan dictionaries, with tags, media, frequency data, and deinflected lookup
 * add search, scan, dictionary management, sharing, and process-text lookup
+* redesign the app on Material 3 Expressive: spring motion, shape morphing, emphasized type, flexible app bars, segmented lists and a loading indicator that waits 200 ms
+* open on Look up, with Scan and Settings beside it; the navigation bar becomes a rail from 840 dp
+* add recent searches, search as you type, and a wallpaper-colors switch
 * use `com.elianiva` as the stable application ID and `com.elianiva.preview` for previews
 
 ### Notes
 
+* Material 3 is pinned to 1.5.0-alpha18, the last 1.5 build that works with Compose 1.11, compileSdk 36 and AGP 8.13. Later builds need compileSdk 37 and AGP 9.1
 * the 1.x app and its `jmdict.db` database are not compatible with the native app
 
 ## 1.1.0 (2023-10-08)

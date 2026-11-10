@@ -31,7 +31,7 @@ class LookupActivity : ComponentActivity() {
         setContent {
             val settings by container.settings.settings.collectAsStateWithLifecycle(initialValue = null)
             val dark = settings?.theme?.isDark(androidx.compose.foundation.isSystemInDarkTheme()) ?: false
-            JishoLensTheme(darkTheme = dark) {
+            JishoLensTheme(darkTheme = dark, dynamicColor = settings?.dynamicColor ?: true) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.surface,

@@ -6,21 +6,27 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.TextUnit
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.elianiva.jisholens.dictionary.RubySegment
+import com.elianiva.jisholens.ui.theme.JapaneseLocale
 
+/**
+ * Text with furigana set above each segment. Every segment reserves a reading line, so bases with
+ * and without a reading share one baseline.
+ */
 @Composable
 fun RubyText(
     segments: List<RubySegment>,
     modifier: Modifier = Modifier,
-    baseSize: TextUnit = 24.sp,
-    readingSize: TextUnit = 10.sp,
+    baseStyle: TextStyle = MaterialTheme.typography.headlineMedium,
+    readingStyle: TextStyle = MaterialTheme.typography.labelMedium,
+    readingColor: Color = MaterialTheme.colorScheme.primary,
 ) {
     if (segments.isEmpty()) return
     val description = segments.joinToString("") { it.text } +
@@ -31,24 +37,21 @@ fun RubyText(
         verticalArrangement = Arrangement.Bottom,
     ) {
         for (segment in segments) {
-            Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = segment.reading ?: " ",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontSize = readingSize,
-                        lineHeight = readingSize,
+                    style = readingStyle.copy(
+                        localeList = JapaneseLocale,
+                        lineHeight = readingStyle.fontSize,
                     ),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = readingColor,
                     maxLines = 1,
                     softWrap = false,
                     textAlign = TextAlign.Center,
                 )
                 Text(
                     text = segment.text,
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontSize = baseSize,
-                        lineHeight = baseSize * 1.25f,
-                    ),
+                    style = baseStyle.copy(localeList = JapaneseLocale),
                     maxLines = 1,
                     softWrap = false,
                 )

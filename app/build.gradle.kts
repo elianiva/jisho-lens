@@ -68,12 +68,20 @@ android {
 
     testOptions {
         unitTests.isIncludeAndroidResources = true
+        // Screenshot tests render many full-size frames in one JVM.
+        unitTests.all { it.maxHeapSize = "896m" }
     }
 }
 
 kotlin {
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_17)
+        // The design system builds on Material 3 Expressive, which is still experimental.
+        optIn.addAll(
+            "androidx.compose.material3.ExperimentalMaterial3Api",
+            "androidx.compose.material3.ExperimentalMaterial3ExpressiveApi",
+            "androidx.compose.ui.text.ExperimentalTextApi",
+        )
     }
 }
 
@@ -86,6 +94,7 @@ dependencies {
     implementation(libs.compose.foundation)
     implementation(libs.compose.material3)
     implementation(libs.compose.material.icons.extended)
+    implementation(libs.graphics.shapes)
     implementation(libs.compose.ui.tooling.preview)
     debugImplementation(libs.compose.ui.tooling)
 
@@ -110,6 +119,8 @@ dependencies {
     testImplementation(libs.roborazzi)
     testImplementation(libs.roborazzi.compose)
     testImplementation(libs.roborazzi.junit)
+    testImplementation(libs.roborazzi.preview.scanner)
+    testImplementation(libs.composable.preview.scanner)
     testImplementation(libs.compose.ui.test.manifest)
     testImplementation(platform(libs.compose.bom))
     testImplementation(libs.compose.ui.test.junit4)

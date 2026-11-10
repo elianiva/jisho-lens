@@ -1,30 +1,48 @@
 package com.elianiva.jisholens.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.LibraryBooks
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.SearchOff
+import androidx.compose.material.icons.rounded.Translate
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -39,9 +57,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.elianiva.jisholens.data.AppContainer
+import com.elianiva.jisholens.ui.components.EmptyState
 import com.elianiva.jisholens.ui.components.EntryCard
+import com.elianiva.jisholens.ui.components.LargeActionButton
+import com.elianiva.jisholens.ui.theme.JapaneseLocale
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** What the lookup screen can do with the dictionaries it has. */
+enum class DictionaryStatus { None, AllOff, Ready }
+
 @Composable
 fun SearchScreen(
     container: AppContainer,
@@ -63,144 +86,238 @@ fun SearchScreen(
         },
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val recents by viewModel.recents.collectAsStateWithLifecycle()
     val dictionaries by container.dictionaries.collectAsStateWithLifecycle()
-    val hasDictionary = dictionaries.any { it.enabled }
+    val status = when {
+        dictionaries.isEmpty() -> DictionaryStatus.None
+        dictionaries.none { it.enabled } -> DictionaryStatus.AllOff
+        else -> DictionaryStatus.Ready
+    }
 
-    val content: @Composable (Modifier) -> Unit = { contentModifier ->
+    SearchContent(
+        state = state,
+        recents = recents,
+        status = status,
+        loadMedia = container.repository::media,
+        onQueryChange = viewModel::onQueryChange,
+        onSubmit = viewModel::submit,
+        onClear = viewModel::clear,
+        onPickQuery = viewModel::searchLink,
+        onClearRecents = viewModel::clearRecents,
+        onOpenDictionaries = onOpenDictionaries,
+        modifier = modifier,
+        onClose = onClose,
+    )
+}
+
+@Composable
+fun SearchContent(
+    state: SearchUiState,
+    recents: List<String>,
+    status: DictionaryStatus,
+    loadMedia: suspend (Long, String) -> ByteArray?,
+    onQueryChange: (String) -> Unit,
+    onSubmit: () -> Unit,
+    onClear: () -> Unit,
+    onPickQuery: (String) -> Unit,
+    onClearRecents: () -> Unit,
+    onOpenDictionaries: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+    onClose: (() -> Unit)? = null,
+) {
+    val body: @Composable (Modifier) -> Unit = { bodyModifier ->
         Column(
-            modifier = contentModifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp, vertical = 16.dp),
+            if (onClose == null) bodyModifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars) else bodyModifier.fillMaxSize(),
         ) {
-            TextField(
-                value = state.query,
-                onValueChange = viewModel::onQueryChange,
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = RoundedCornerShape(32.dp),
-                placeholder = { Text("Search for kanji, words, etc") },
-                leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
-                trailingIcon = if (state.query.isNotEmpty()) {
-                    {
-                        IconButton(onClick = viewModel::clear) {
-                            Icon(Icons.Outlined.Close, contentDescription = "Clear search")
-                        }
-                    }
-                } else {
-                    null
-                },
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { viewModel.submit() }),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
-                    unfocusedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                ),
+            SearchField(
+                query = state.query,
+                onQueryChange = onQueryChange,
+                onSubmit = onSubmit,
+                onClear = onClear,
+                modifier = Modifier.padding(vertical = 8.dp),
             )
-
-            if (state.results.isNotEmpty()) {
-                Text(
-                    text = "${state.results.size} entries",
-                    modifier = Modifier.padding(top = 8.dp),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+                SearchBody(
+                    state = state,
+                    recents = recents,
+                    status = status,
+                    loadMedia = loadMedia,
+                    onPickQuery = onPickQuery,
+                    onClearRecents = onClearRecents,
+                    onOpenDictionaries = onOpenDictionaries,
                 )
-            }
-
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                when {
-                    state.isLoading -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator()
-                        Text(
-                            text = "Searching for \"${state.query}\"...",
-                            modifier = Modifier.padding(top = 12.dp),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-                    state.error != null -> Text(
-                        text = state.error.orEmpty(),
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                    !hasDictionary -> EmptySearchState(
-                        title = "No dictionary yet",
-                        detail = "Import a Yomitan dictionary to start looking up words.",
-                        action = onOpenDictionaries?.let { open ->
-                            { TextButton(onClick = open) { Text("Import dictionary") } }
-                        },
-                    )
-                    state.hasSearched && state.results.isEmpty() -> EmptySearchState(
-                        title = "No results",
-                        detail = "Try the full-text search setting for partial kana, or check the spelling.",
-                        action = null,
-                    )
-                    !state.hasSearched -> EmptySearchState(
-                        title = "Search a word",
-                        detail = "Japanese, kanji, kana, or an English gloss.",
-                        action = null,
-                    )
-                    else -> LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        items(
-                            items = state.results,
-                            key = { "${it.termId}:${it.dictionaryId}" },
-                        ) { entry ->
-                            EntryCard(
-                                entry = entry,
-                                repository = container.repository,
-                                onQuery = viewModel::searchLink,
-                            )
-                        }
-                    }
-                }
             }
         }
     }
 
     if (onClose == null) {
-        content(modifier)
+        body(modifier)
     } else {
         Scaffold(
             modifier = modifier.fillMaxSize(),
             topBar = {
                 TopAppBar(
-                    title = { Text("Look up") },
+                    title = { Text("Look up", style = MaterialTheme.typography.titleLargeEmphasized) },
                     navigationIcon = {
                         IconButton(onClick = onClose) {
-                            Icon(Icons.Outlined.Close, contentDescription = "Close")
+                            Icon(Icons.Rounded.Close, contentDescription = "Close")
                         }
                     },
                 )
             },
         ) { padding ->
-            content(Modifier.padding(padding))
+            body(Modifier.padding(padding))
         }
     }
 }
 
 @Composable
-private fun EmptySearchState(
-    title: String,
-    detail: String,
-    action: (@Composable () -> Unit)?,
+private fun SearchField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onSubmit: () -> Unit,
+    onClear: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.padding(24.dp),
-    ) {
-        Text(text = title, style = MaterialTheme.typography.titleMedium)
-        Text(
-            text = detail,
-            modifier = Modifier.padding(top = 4.dp),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+    // Search bar margins: 24dp at rest, 12dp focused, so the field widens as you start typing.
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val margin by animateDpAsState(
+        targetValue = if (focused) 12.dp else 24.dp,
+        animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+        label = "search-margin",
+    )
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        modifier = modifier.fillMaxWidth().padding(horizontal = margin),
+        interactionSource = interaction,
+        singleLine = true,
+        shape = CircleShape,
+        textStyle = MaterialTheme.typography.bodyLarge.copy(localeList = JapaneseLocale),
+        placeholder = { Text("Search a word, kanji or gloss", style = MaterialTheme.typography.bodyLarge) },
+        leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+        trailingIcon = if (query.isNotEmpty()) {
+            {
+                IconButton(onClick = onClear) {
+                    Icon(Icons.Rounded.Close, contentDescription = "Clear search")
+                }
+            }
+        } else {
+            null
+        },
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(onSearch = { onSubmit() }),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = Color.Transparent,
+        ),
+    )
+}
+
+@Composable
+private fun SearchBody(
+    state: SearchUiState,
+    recents: List<String>,
+    status: DictionaryStatus,
+    loadMedia: suspend (Long, String) -> ByteArray?,
+    onPickQuery: (String) -> Unit,
+    onClearRecents: () -> Unit,
+    onOpenDictionaries: (() -> Unit)?,
+) {
+    when {
+        status == DictionaryStatus.None -> EmptyState(
+            polygon = MaterialShapes.Cookie9Sided,
+            icon = Icons.Rounded.LibraryBooks,
+            title = "Add a dictionary first",
+            modifier = Modifier.padding(top = 32.dp),
+            action = onOpenDictionaries?.let { open ->
+                { LargeActionButton("Import dictionary", Icons.Rounded.LibraryBooks, onClick = open) }
+            },
         )
-        action?.let {
-            Box(Modifier.padding(top = 8.dp)) { it() }
+        status == DictionaryStatus.AllOff -> EmptyState(
+            polygon = MaterialShapes.Cookie9Sided,
+            icon = Icons.Rounded.Translate,
+            title = "No dictionary is on",
+            modifier = Modifier.padding(top = 32.dp),
+            action = onOpenDictionaries?.let { open ->
+                { LargeActionButton("Manage dictionaries", Icons.Rounded.Translate, onClick = open, tonal = true) }
+            },
+        )
+        state.error != null -> EmptyState(
+            polygon = MaterialShapes.SoftBurst,
+            icon = Icons.Rounded.SearchOff,
+            title = "The search failed",
+            body = state.error,
+            modifier = Modifier.padding(top = 32.dp),
+        )
+        state.results.isNotEmpty() -> LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item(key = "count") {
+                Text(
+                    text = if (state.results.size == 1) "1 entry" else "${state.results.size} entries",
+                    modifier = Modifier.padding(start = 8.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            items(items = state.results, key = { "${it.termId}:${it.dictionaryId}" }) { entry ->
+                EntryCard(entry = entry, loadMedia = loadMedia, onQuery = onPickQuery)
+            }
         }
+        state.isLoading -> {
+            // Under 200 ms the answer is instant, so the indicator waits before it shows.
+            var visible by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) {
+                delay(200)
+                visible = true
+            }
+            if (visible) {
+                Box(Modifier.fillMaxSize().padding(top = 96.dp), contentAlignment = Alignment.TopCenter) {
+                    LoadingIndicator(Modifier.padding(16.dp))
+                }
+            }
+        }
+        state.hasSearched -> EmptyState(
+            polygon = MaterialShapes.Pentagon,
+            icon = Icons.Rounded.SearchOff,
+            title = "No matches",
+            modifier = Modifier.padding(top = 32.dp),
+        )
+        recents.isNotEmpty() -> Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "Recent",
+                    modifier = Modifier.weight(1f).padding(start = 8.dp, top = 16.dp, bottom = 8.dp),
+                    style = MaterialTheme.typography.titleSmallEmphasized,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                TextButton(onClick = onClearRecents) { Text("Clear") }
+            }
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                recents.forEach { word ->
+                    AssistChip(
+                        onClick = { onPickQuery(word) },
+                        label = { Text(word, style = MaterialTheme.typography.titleMedium.copy(localeList = JapaneseLocale)) },
+                        leadingIcon = { Icon(Icons.Rounded.History, contentDescription = null) },
+                        shape = CircleShape,
+                    )
+                }
+            }
+        }
+        else -> EmptyState(
+            polygon = MaterialShapes.Clover4Leaf,
+            icon = Icons.Rounded.Search,
+            title = "Look up a word",
+            modifier = Modifier.padding(top = 32.dp),
+        )
     }
 }
