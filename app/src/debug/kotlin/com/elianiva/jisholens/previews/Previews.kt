@@ -274,6 +274,7 @@ private fun Screen(
         onCollapse = {},
         onSearchLine = {},
         onCopy = {},
+        onMine = {},
         onRescan = {},
         onClose = {},
     )

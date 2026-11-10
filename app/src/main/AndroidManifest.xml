@@ -104,6 +104,8 @@
     </application>
 
     <queries>
+        <!-- AnkiDroid, for the Anki action. No AnkiDroid code is bundled. -->
+        <package android:name="com.ichi2.anki" />
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <category android:name="android.intent.category.BROWSABLE" />

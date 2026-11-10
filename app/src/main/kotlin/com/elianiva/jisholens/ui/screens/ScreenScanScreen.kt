@@ -29,6 +29,7 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.NoteAdd
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.FilledTonalIconButton
@@ -68,6 +69,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.elianiva.jisholens.data.AppContainer
+import com.elianiva.jisholens.data.buildAnkiNote
+import com.elianiva.jisholens.data.mineToAnki
 import com.elianiva.jisholens.domain.Coverage
 import com.elianiva.jisholens.domain.Entry
 import com.elianiva.jisholens.domain.ScanWord
@@ -124,6 +127,9 @@ fun ScreenScanScreen(
             val clipboard = context.getSystemService(ClipboardManager::class.java)
             clipboard?.setPrimaryClip(ClipData.newPlainText("Jisho Lens", text))
         },
+        onMine = { entry ->
+            context.mineToAnki(buildAnkiNote(entry = entry, sentence = state.line?.text))
+        },
         onRescan = onRescan,
         onClose = onClose,
     )
@@ -144,6 +150,7 @@ fun ScreenScanContent(
     onCollapse: () -> Unit,
     onSearchLine: () -> Unit,
     onCopy: (String) -> Unit,
+    onMine: (Entry) -> Unit,
     onRescan: () -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
@@ -185,6 +192,7 @@ fun ScreenScanContent(
                         onExpand = onExpand,
                         onClearSelection = onClearSelection,
                         onCopy = onCopy,
+                        onMine = onMine,
                     )
                     state.selectedLine >= 0 -> NoEntryCard(
                         surface = state.line?.text.orEmpty(),
@@ -355,6 +363,7 @@ private fun WordCard(
     onExpand: () -> Unit,
     onClearSelection: () -> Unit,
     onCopy: (String) -> Unit,
+    onMine: (Entry) -> Unit,
 ) {
     val entry = state.entries.firstOrNull() ?: return
     val word = state.word
@@ -402,6 +411,12 @@ private fun WordCard(
             entry = entry,
             onExpand = onExpand,
             actions = {
+                IconButton(onClick = { onMine(entry) }) {
+                    Icon(
+                        imageVector = Icons.Rounded.NoteAdd,
+                        contentDescription = "Make an Anki note for ${entry.expression}",
+                    )
+                }
                 IconButton(onClick = onToggleKnown) {
                     Icon(
                         imageVector = Icons.Rounded.Check,
