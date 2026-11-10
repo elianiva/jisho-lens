@@ -34,7 +34,10 @@ class DictionaryRepository(private val database: DictionaryDatabase) {
         val matches = lookup.scan(text)
         val entriesById = entries(matches.flatMap { it.results })
             .associateBy { it.termId }
+        // The segmentation stays greedy; the entries of each word are ranked by
+        // frequency so the chip and its card lead with the common word.
         matches.map { match -> match.toScanWord(entriesById) }
+            .map { word -> word.copy(entries = rankEntries(word.entries)) }
     }
 
     /**
@@ -46,7 +49,7 @@ class DictionaryRepository(private val database: DictionaryDatabase) {
         val matches = lookup.scanAt(text, offset, limit = limit)
         val entriesById = entries(matches.flatMap { it.results })
             .associateBy { it.termId }
-        matches.map { match -> match.toScanWord(entriesById) }
+        rankCandidates(matches.map { match -> match.toScanWord(entriesById) })
     }
 
     suspend fun setEnabled(id: Long, enabled: Boolean) = onDb { store.setEnabled(id, enabled) }
@@ -147,5 +150,6 @@ class DictionaryRepository(private val database: DictionaryDatabase) {
         start = start,
         end = end,
         entries = results.mapNotNull { entriesById[it.termId] },
+        exact = exact,
     )
 }

@@ -29,4 +29,11 @@ data class ScanWord(
     val start: Int,
     val end: Int,
     val entries: List<Entry>,
-)
+    /** True when the surface itself is a headword, not a conjugated form. */
+    val exact: Boolean = true,
+) {
+    /** The best frequency rank among the entries; lower is more common. */
+    val bestFrequency: Double? get() = entries.mapNotNull { it.frequency }.minOrNull()
+
+    val length: Int get() = end - start
+}

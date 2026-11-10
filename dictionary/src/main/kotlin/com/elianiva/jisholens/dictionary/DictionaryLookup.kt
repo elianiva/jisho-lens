@@ -32,6 +32,8 @@ data class ScanMatch(
     val start: Int,
     val end: Int,
     val results: List<TermResult>,
+    /** True when the surface itself is a headword, not a conjugated form. */
+    val exact: Boolean = false,
 )
 
 /** One prefix that starts at the tapped offset, and whether it is a dictionary headword itself. */
@@ -118,9 +120,10 @@ class DictionaryLookup(private val database: SqliteDatabase) {
         for ((candidate, ranges) in rangesByCandidate) {
             val results = mergeResults(exact[candidate], deinflected[candidate], limitPerWord)
             if (results.isEmpty()) continue
+            val exactMatch = !exact[candidate].isNullOrEmpty()
             for (range in ranges) {
                 byStart.getOrPut(range.first) { ArrayList() }
-                    .add(ScanMatch(candidate, range.first, range.last + 1, results))
+                    .add(ScanMatch(candidate, range.first, range.last + 1, results, exactMatch))
             }
         }
 
@@ -181,7 +184,7 @@ class DictionaryLookup(private val database: SqliteDatabase) {
             if (results.isEmpty()) continue
             ranked.add(
                 RankedCandidate(
-                    match = ScanMatch(surface, range.first, range.last + 1, results),
+                    match = ScanMatch(surface, range.first, range.last + 1, results, !exactResults.isNullOrEmpty()),
                     exact = !exactResults.isNullOrEmpty(),
                 ),
             )
