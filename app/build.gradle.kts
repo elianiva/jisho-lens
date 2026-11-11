@@ -131,3 +131,10 @@ dependencies {
     androidTestImplementation(libs.compose.ui.test.junit4)
     debugImplementation(libs.compose.ui.test.manifest)
 }
+
+tasks.withType<Test>().configureEach {
+    // Recording writes the screenshots to build/screenshots, which is not a
+    // declared task output. A cache hit would skip the render and leave that
+    // directory without the new images, so this task always runs.
+    outputs.cacheIf("Roborazzi screenshots are not task outputs") { false }
+}

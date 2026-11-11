@@ -58,12 +58,17 @@ The native app does not read the 1.x database. Import a Yomitan `.zip` dictionar
 
 ## Build
 
-You need JDK 17 and Android SDK platform 36.
+You need Android SDK platform 36 and JDK 17 or newer. Gradle provisions a Java 17
+toolchain when your JDK differs, so a newer JDK also works.
 
 ```sh
 ./gradlew :app:assemblePreviewDebug
 ./gradlew :dictionary:test :app:testPreviewDebugUnitTest
 ```
+
+The build keeps Gradle's configuration cache and build cache on, so later builds
+reuse the task graph and task outputs. Tests always run, because Roborazzi writes
+the screenshots outside the test task's outputs.
 
 Install the preview on a connected device:
 
