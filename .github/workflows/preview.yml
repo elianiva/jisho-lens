@@ -1,0 +1,101 @@
+# Builds the preview app on demand and puts the APK on one release that stays
+# at a fixed tag, so a phone can keep a bookmark to the release page. The debug
+# build type signs with the debug key: this is for trying the app, not for
+# distributing it, and it works before the release signing secrets exist.
+name: Preview APK
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: preview-apk
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: "platform-tools platforms;android-36 build-tools;36.0.0"
+      - uses: gradle/actions/setup-gradle@v6
+
+      # A debug key made on a fresh runner would differ on every run, and an APK
+      # with a new key cannot install over the previous one. Keep the first key
+      # in the cache so one preview build replaces the last.
+      - name: Restore the debug keystore
+        uses: actions/cache@v6
+        with:
+          path: ~/.android/debug.keystore
+          key: jisho-lens-debug-keystore-v1
+
+      - name: Build the preview APK
+        run: ./gradlew :app:assemblePreviewDebug --console=plain
+
+      - name: Name the APK after its version and date
+        id: apk
+        run: |
+          built="app/build/outputs/apk/preview/debug/app-preview-debug.apk"
+          version="$("$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest version-name "$built")"
+          version="${version%-preview}"
+          date="$(date -u +%Y-%m-%d)"
+          sha="$(git rev-parse --short=7 HEAD)"
+          name="jisho-lens-${version}-preview-${date}-${sha}.apk"
+          mkdir -p dist
+          cp "$built" "dist/$name"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs "dist/$name" | head -3
+          {
+            echo "name=$name"
+            echo "version=$version"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Publish to the preview release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          NAME: ${{ steps.apk.outputs.name }}
+          VERSION: ${{ steps.apk.outputs.version }}
+          SHA: ${{ github.sha }}
+        run: |
+          tag=preview
+          date="$(date -u +%Y-%m-%d)"
+          {
+            echo "Preview build for $VERSION, from ${SHA:0:7} on $date."
+            echo
+            echo "Open this APK on an Android phone to install it. Allow installing from this source if the phone asks."
+            echo
+            echo "It is signed with the debug key, so it is for trying the app, not for distribution. If a preview from an older key is already installed, uninstall it first."
+          } > "$RUNNER_TEMP/notes.md"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "dist/$NAME" --clobber
+          else
+            gh release create "$tag" "dist/$NAME" \
+              --title "Jisho Lens preview" \
+              --target "$SHA" \
+              --prerelease \
+              --notes-file "$RUNNER_TEMP/notes.md"
+          fi
+          # One APK per release: the newest. The older ones would only be
+          # downloads of builds the fixed release page no longer offers.
+          gh release view "$tag" --json assets --jq '.assets[].name' | while read -r asset; do
+            if [ "$asset" != "$NAME" ] && [ "${asset##*.}" = "apk" ]; then
+              gh release delete-asset "$tag" "$asset" --yes
+            fi
+          done
+          gh release edit "$tag" --notes-file "$RUNNER_TEMP/notes.md" --prerelease
+          url="https://github.com/$GH_REPO/releases/download/$tag/$NAME"
+          echo "APK: $url"
+          {
+            echo "### Preview APK"
+            echo
+            echo "[$NAME]($url)"
+          } >> "$GITHUB_STEP_SUMMARY"
