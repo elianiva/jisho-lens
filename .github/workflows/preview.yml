@@ -38,8 +38,29 @@ jobs:
           path: ~/.android/debug.keystore
           key: jisho-lens-debug-keystore-v1
 
+      # The runner image has no debug keystore at the default location, and AGP
+      # would make a new key on each run. Create one at a known path, and sign
+      # with it through the injected signing properties below.
+      - name: Create the debug keystore
+        run: |
+          if [ ! -f "$HOME/.android/debug.keystore" ]; then
+            mkdir -p "$HOME/.android"
+            keytool -genkeypair \
+              -keystore "$HOME/.android/debug.keystore" \
+              -storepass android -keypass android \
+              -alias androiddebugkey \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
       - name: Build the preview APK
-        run: ./gradlew :app:assemblePreviewDebug --console=plain
+        run: |
+          ./gradlew :app:assemblePreviewDebug \
+            -Pandroid.injected.signing.store.file="$HOME/.android/debug.keystore" \
+            -Pandroid.injected.signing.store.password=android \
+            -Pandroid.injected.signing.key.alias=androiddebugkey \
+            -Pandroid.injected.signing.key.password=android \
+            --console=plain
 
       - name: Name the APK after its version and date
         id: apk
