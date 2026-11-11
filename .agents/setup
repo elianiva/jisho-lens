@@ -5,10 +5,26 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/android-sdk}}"
 
-if ! command -v java >/dev/null 2>&1; then
+# Gradle runs on the JDK on PATH. Debian 13 (trixie) ships OpenJDK 21 and has no
+# openjdk-17 package; Debian 12 (bookworm) ships 17. Install whichever apt has,
+# newest first, so the same script works on both.
+if ! command -v javac >/dev/null 2>&1; then
     sudo apt-get update -qq
-    sudo apt-get install -y -qq openjdk-17-jdk-headless
+    for package in openjdk-21-jdk-headless openjdk-17-jdk-headless; do
+        if apt-cache show "$package" >/dev/null 2>&1; then
+            sudo apt-get install -y -qq "$package"
+            break
+        fi
+    done
+    if ! command -v javac >/dev/null 2>&1; then
+        echo "No JDK is installed and apt has no OpenJDK package for this distribution." >&2
+        exit 1
+    fi
 fi
+
+# :dictionary and :cli compile with a Java 17 toolchain. settings.gradle.kts adds
+# the foojay resolver, so Gradle downloads that toolchain itself when the JDK
+# above is newer. This script installs no second JDK.
 
 if [ ! -d "$SDK_ROOT/platforms/android-36" ]; then
     mkdir -p "$SDK_ROOT/cmdline-tools"
@@ -18,7 +34,10 @@ if [ ! -d "$SDK_ROOT/platforms/android-36" ]; then
         rm -rf "$SDK_ROOT/cmdline-tools/latest"
         mv "$SDK_ROOT/cmdline-tools/cmdline-tools" "$SDK_ROOT/cmdline-tools/latest"
     fi
-    yes | "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK_ROOT" --licenses >/dev/null
+    # Process substitution, not a pipe: sdkmanager stops reading once it has
+    # every licence, and a pipe would leave `yes` killed by SIGPIPE, which
+    # pipefail turns into a failed setup.
+    "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK_ROOT" --licenses >/dev/null < <(yes)
     "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK_ROOT" \
         "platform-tools" "platforms;android-36" "build-tools;36.0.0" >/dev/null
 fi
