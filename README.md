@@ -54,7 +54,7 @@ The native app does not read the 1.x database. Import a Yomitan `.zip` dictionar
 - `androidx.sqlite` bundled SQLite behind the `:dictionary` interface
 - FTS4 with `unicode61` for search
 - ML Kit Japanese text recognition
-- Gradle 8.14.4 and AGP 8.13.2
+- Gradle 8.14.7 and AGP 8.13.2
 
 ## Build
 
@@ -93,6 +93,21 @@ Every screen has a stateless `*Content` composable and a `@Preview` in `app/src/
 ```
 
 The images land in `app/build/screenshots`: `previews/` for each preview and `app/` for the running app, including a tablet-width window with the navigation rail.
+
+### CI and releases
+
+Every push to `master` and every pull request runs the checks in `.github/workflows/ci.yml`. Each check is a job of its own, so lint, the app, dictionary, and CLI tests, the screenshot tests, the APK builds, and the workflow lint all run at the same time. Branch protection can require the single `All checks` job.
+
+Pushing a tag such as `v1.2.3` runs `.github/workflows/release.yml`. It waits for the CI run on the tagged commit, builds the signed stable release with the tag as `versionName`, checks that the APK reports that version, and publishes `jisho-lens-1.2.3.apk`, `jisho-lens-1.2.3.aab`, and `SHA256SUMS.txt` as a GitHub release. The release notes are the `CHANGELOG.md` section for the version, or GitHub's generated notes when there is none. The version code is `major * 10000 + minor * 100 + patch`, so `v1.2.3` has code `10203`.
+
+Signing reads four repository secrets, and the release stops before building if one is missing:
+
+- `ANDROID_KEYSTORE_BASE64`: the release keystore, base64-encoded.
+- `ANDROID_KEYSTORE_PASSWORD`: the keystore password.
+- `ANDROID_KEY_ALIAS`: the key alias inside the keystore.
+- `ANDROID_KEY_PASSWORD`: the key password.
+
+A local build without them produces an unsigned release, which is what `:app:assembleStableRelease` has always done.
 
 ## Dictionary tooling
 

@@ -8,6 +8,31 @@ plugins {
     alias(libs.plugins.roborazzi)
 }
 
+// The release workflow passes the pushed tag, as -PversionName=1.2.3, so the
+// artifact carries the version it is released under. A build without it keeps
+// the default. versionCode follows the version, as 1.2.3 -> 10203, so every
+// release tag counts up from the one before it.
+val appVersionName = providers.gradleProperty("versionName").getOrElse("2.0.0")
+val versionParts = appVersionName.split(".")
+require(versionParts.size == 3 && versionParts.all { it.toIntOrNull() != null }) {
+    "versionName must look like 1.2.3, not $appVersionName"
+}
+val (versionMajor, versionMinor, versionPatch) = versionParts.map(String::toInt)
+require(versionMinor < 100 && versionPatch < 100) {
+    "versionName minor and patch must be below 100, not $appVersionName"
+}
+
+// A release is signed when the keystore and its passwords are in the
+// environment. CI decodes the keystore from a repository secret; without the
+// four variables a release build stays unsigned, which is what a local build
+// does and what the release workflow refuses to publish.
+val keystoreFile = providers.environmentVariable("JISHO_KEYSTORE_FILE")
+val keystorePassword = providers.environmentVariable("JISHO_KEYSTORE_PASSWORD")
+val keyAliasName = providers.environmentVariable("JISHO_KEY_ALIAS")
+val keyPasswordValue = providers.environmentVariable("JISHO_KEY_PASSWORD")
+val canSignRelease = listOf(keystoreFile, keystorePassword, keyAliasName, keyPasswordValue)
+    .all { it.isPresent && it.get().isNotBlank() }
+
 android {
     namespace = "com.elianiva.jisholens"
     compileSdk = 36
@@ -16,8 +41,8 @@ android {
         applicationId = "com.elianiva"
         minSdk = 26
         targetSdk = 36
-        versionCode = 20000
-        versionName = "2.0.0"
+        versionCode = versionMajor * 10_000 + versionMinor * 100 + versionPatch
+        versionName = appVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -37,8 +62,20 @@ android {
         }
     }
 
+    signingConfigs {
+        if (canSignRelease) {
+            create("release") {
+                storeFile = file(keystoreFile.get())
+                storePassword = keystorePassword.get()
+                keyAlias = keyAliasName.get()
+                keyPassword = keyPasswordValue.get()
+            }
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig = signingConfigs.findByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

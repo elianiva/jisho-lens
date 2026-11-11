@@ -1,0 +1,181 @@
+# Checks every change before it can release. Each check is a job of its own, so
+# they all run at the same time and a slow one does not hold up the rest. A tag
+# push skips this workflow: the release workflow publishes a tag only after the
+# CI run on the tag's commit has passed.
+#
+# Every Gradle job runs on JDK 17, the toolchain the modules compile with, and
+# the Android SDK has the platform and build tools the app compiles against.
+# setup-gradle caches the Gradle User Home, build cache included: a pull request
+# reads what master wrote, and master writes back.
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+# A newer push to the same ref supersedes the run in flight. A pull request is
+# cancelled so a fix does not wait behind the run it replaced; a push to master
+# runs to the end, so every commit that lands is checked.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  ACTIONLINT_VERSION: 1.7.12
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: "platform-tools platforms;android-36 build-tools;36.0.0"
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Lint
+        run: ./gradlew :app:lintStableRelease --console=plain
+
+  test:
+    name: App unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: "platform-tools platforms;android-36 build-tools;36.0.0"
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Test
+        run: ./gradlew :app:testPreviewDebugUnitTest --console=plain
+
+  dictionary:
+    name: Dictionary tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Test
+        run: ./gradlew :dictionary:test --console=plain
+
+  cli:
+    name: CLI tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Test and package
+        run: ./gradlew :cli:test :cli:installDist --console=plain
+
+  screenshots:
+    name: Screenshot tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: "platform-tools platforms;android-36 build-tools;36.0.0"
+      - uses: gradle/actions/setup-gradle@v6
+      # The build opts this test task out of the cache, because Roborazzi writes
+      # the screenshots outside its outputs, so it records on every run.
+      - name: Render every preview and app screen
+        run: ./gradlew :app:testPreviewDebugUnitTest --tests "*ScreenshotTest" -Proborazzi.test.record=true --console=plain
+      # The images are the output of this job, so they are kept even when a
+      # render fails partway and leaves only some of them.
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: screenshots
+          path: app/build/screenshots
+          if-no-files-found: warn
+
+  build:
+    name: Build APKs
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: "platform-tools platforms;android-36 build-tools;36.0.0"
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Build
+        run: ./gradlew :app:assemblePreviewDebug :app:assembleStableRelease :app:bundleStableRelease --console=plain
+      - uses: actions/upload-artifact@v7
+        with:
+          name: apks
+          path: |
+            app/build/outputs/apk/preview/debug/*.apk
+            app/build/outputs/apk/stable/release/*.apk
+            app/build/outputs/bundle/stableRelease/*.aab
+          if-no-files-found: error
+
+  workflows:
+    name: Workflow files
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: actionlint
+        run: |
+          curl --fail --location --silent --show-error \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" \
+            --output "$RUNNER_TEMP/actionlint.tar.gz"
+          tar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP" actionlint
+          "$RUNNER_TEMP/actionlint" -color
+
+  # One gate for branch protection. It passes only when every check above
+  # passes, so a new check guards the branch as soon as it is added to needs.
+  checks:
+    name: All checks
+    if: always()
+    needs: [lint, test, dictionary, cli, screenshots, build, workflows]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: All checks must pass
+        run: |
+          # needs.<job>.result is success, failure, cancelled, or skipped.
+          if [ "${{ needs.lint.result }}" != "success" ] || \
+             [ "${{ needs.test.result }}" != "success" ] || \
+             [ "${{ needs.dictionary.result }}" != "success" ] || \
+             [ "${{ needs.cli.result }}" != "success" ] || \
+             [ "${{ needs.screenshots.result }}" != "success" ] || \
+             [ "${{ needs.build.result }}" != "success" ] || \
+             [ "${{ needs.workflows.result }}" != "success" ]; then
+            echo "One or more checks failed."
+            exit 1
+          fi
+          echo "All checks passed."
