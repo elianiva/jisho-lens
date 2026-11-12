@@ -20,6 +20,10 @@ All notable changes to this project will be documented in this file. See [standa
 * mine a word into an Anki note through AnkiDroid's `ACTION_SEND` contract, with the sentence, the pitch, and a share-sheet fallback
 * download Jitendex or JMdict on first run, with size and licence shown, and import it in one tap
 
+### Bug Fixes
+
+* restore the original Jisho Lens launcher icon as an adaptive icon, with a monochrome layer for themed icons
+
 ### Notes
 
 * Material 3 is pinned to 1.5.0-alpha18, the last 1.5 build that works with Compose 1.11, compileSdk 36 and AGP 8.13. Later builds need compileSdk 37 and AGP 9.1

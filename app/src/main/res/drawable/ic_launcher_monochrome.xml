@@ -1,9 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- The foreground mark without the tile, for themed icons. The system tints
+     these paths with the wallpaper colour. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="6" android:strokeLineCap="round" android:pathData="M54,32 A22,22 0 1,1 32,54" />
-    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="5" android:strokeLineCap="round" android:pathData="M33,39h12M39,33v12" />
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="4.6"
+        android:strokeLineCap="round"
+        android:pathData="M56.73,34.34 A19.85,19.85 0 1,1 34.34,56.73" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M39.83,33.87 L39.83,35.36 Q39.83,33.87 41.32,33.87 L42.82,33.87 Q44.31,33.87 44.31,35.36 L44.31,38.34 Q44.31,39.83 45.8,39.83 L48.78,39.83 Q50.27,39.83 50.27,41.32 L50.27,42.82 Q50.27,44.31 48.78,44.31 L45.8,44.31 Q44.31,44.31 44.31,45.8 L44.31,48.78 Q44.31,50.27 42.82,50.27 L41.32,50.27 Q39.83,50.27 39.83,48.78 L39.83,45.8 Q39.83,44.31 38.34,44.31 L35.36,44.31 Q33.87,44.31 33.87,42.82 L33.87,41.32 Q33.87,39.83 35.36,39.83 L38.34,39.83 Q39.83,39.83 39.83,38.34 Z" />
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="3.17"
+        android:strokeLineCap="round"
+        android:pathData="M65.45,57.1 A10.92,10.92 0 0,1 57.16,65.36" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M64.01,45.73 A1.85,1.85 0 1,1 64.01,49.43 A1.85,1.85 0 1,1 64.01,45.73 Z" />
 </vector>
