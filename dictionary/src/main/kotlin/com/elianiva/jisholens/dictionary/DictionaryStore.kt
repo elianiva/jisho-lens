@@ -47,32 +47,50 @@ data class DictionaryRecord(
     val importSuccess: Boolean,
     val prefixWildcardsSupported: Boolean,
     val counts: Map<String, Int>,
+    /** Set by the archive's index for frequency dictionaries, null for every other kind. */
+    val frequencyMode: String? = null,
+    /** The `term_meta` modes the archive imported, such as `freq` or `pitch`. */
+    val termMetaModes: Set<String> = emptySet(),
 )
 
 /** Dictionary-level operations: listing, enabling, reordering, and removal. */
 class DictionaryStore(private val database: SqliteDatabase) {
-    fun list(): List<DictionaryRecord> = database.query(
-        """
-        SELECT id, title, revision, formatVersion, sequenced, enabled, priority, alias, importDate,
-               importSuccess, prefixWildcardsSupported, countsJson
-        FROM dictionaries
-        ORDER BY priority ASC, title ASC
-        """,
-    ).map { row ->
-        DictionaryRecord(
-            id = row[0] as Long,
-            title = row[1] as String,
-            revision = row[2] as String,
-            formatVersion = (row[3] as Number).toInt(),
-            sequenced = (row[4] as Number).toInt() != 0,
-            enabled = (row[5] as Number).toInt() != 0,
-            priority = (row[6] as Number).toInt(),
-            alias = row[7] as String?,
-            importDate = row[8] as Long,
-            importSuccess = (row[9] as Number).toInt() != 0,
-            prefixWildcardsSupported = (row[10] as Number).toInt() != 0,
-            counts = parseCounts(row[11] as String?),
-        )
+    fun list(): List<DictionaryRecord> {
+        val modes = termMetaModes()
+        return database.query(
+            """
+            SELECT id, title, revision, formatVersion, sequenced, enabled, priority, alias, importDate,
+                   importSuccess, prefixWildcardsSupported, countsJson, frequencyMode
+            FROM dictionaries
+            ORDER BY priority ASC, title ASC
+            """,
+        ).map { row ->
+            DictionaryRecord(
+                id = row[0] as Long,
+                title = row[1] as String,
+                revision = row[2] as String,
+                formatVersion = (row[3] as Number).toInt(),
+                sequenced = (row[4] as Number).toInt() != 0,
+                enabled = (row[5] as Number).toInt() != 0,
+                priority = (row[6] as Number).toInt(),
+                alias = row[7] as String?,
+                importDate = row[8] as Long,
+                importSuccess = (row[9] as Number).toInt() != 0,
+                prefixWildcardsSupported = (row[10] as Number).toInt() != 0,
+                counts = parseCounts(row[11] as String?),
+                frequencyMode = row[12] as String?,
+                termMetaModes = modes[row[0] as Long].orEmpty(),
+            )
+        }
+    }
+
+    /** One grouped query for the modes of every dictionary, so a list refresh stays cheap. */
+    private fun termMetaModes(): Map<Long, Set<String>> {
+        val modes = HashMap<Long, MutableSet<String>>()
+        for (row in database.query("SELECT DISTINCT dictionaryId, mode FROM term_meta")) {
+            modes.getOrPut((row[0] as Number).toLong()) { HashSet() }.add(row[1] as String)
+        }
+        return modes
     }
 
     fun findById(id: Long): DictionaryRecord? = list().firstOrNull { it.id == id }
