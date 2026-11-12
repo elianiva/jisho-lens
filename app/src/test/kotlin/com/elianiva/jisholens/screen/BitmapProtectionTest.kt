@@ -1,4 +1,4 @@
-package com.elianiva.jisholens.ui.screens
+package com.elianiva.jisholens.screen
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -15,7 +15,7 @@ import org.robolectric.annotation.GraphicsMode
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35])
-class ScreenFrameTest {
+class BitmapProtectionTest {
     @Test
     fun `a flat dark frame is treated as a protected window`() {
         val black = Bitmap.createBitmap(64, 64, Bitmap.Config.ARGB_8888)
