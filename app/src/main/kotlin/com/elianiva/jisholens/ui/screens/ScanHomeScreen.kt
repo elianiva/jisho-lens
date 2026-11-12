@@ -31,6 +31,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,8 +45,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.graphics.shapes.RoundedPolygon
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.elianiva.jisholens.data.AppContainer
+import com.elianiva.jisholens.screen.LensAccessibilityService
+import com.elianiva.jisholens.screen.LensSetupActivity
 import com.elianiva.jisholens.ui.components.ShapeBadge
 import com.elianiva.jisholens.ui.components.pressedCornerShape
 import kotlinx.coroutines.Dispatchers
@@ -64,6 +70,15 @@ fun ScanHomeScreen(
     val dictionaries by container.dictionaries.collectAsStateWithLifecycle()
     val hasDictionary = dictionaries.any { it.enabled }
     var cameraPath by remember { mutableStateOf<String?>(null) }
+    var liveReading by remember { mutableStateOf(LensAccessibilityService.isEnabled(context)) }
+    val owner = LocalLifecycleOwner.current
+    DisposableEffect(owner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) liveReading = LensAccessibilityService.isEnabled(context)
+        }
+        owner.lifecycle.addObserver(observer)
+        onDispose { owner.lifecycle.removeObserver(observer) }
+    }
 
     val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { saved ->
         val path = cameraPath
@@ -90,6 +105,8 @@ fun ScanHomeScreen(
         onGallery = {
             gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
         },
+        liveReadingEnabled = liveReading,
+        onOpenLiveReading = { context.startActivity(LensSetupActivity.intent(context)) },
     )
 }
 
@@ -100,6 +117,8 @@ fun ScanHomeContent(
     onCamera: () -> Unit,
     onGallery: () -> Unit,
     modifier: Modifier = Modifier,
+    liveReadingEnabled: Boolean = false,
+    onOpenLiveReading: () -> Unit = {},
 ) {
     val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
@@ -154,7 +173,9 @@ fun ScanHomeContent(
         )
         ScreenLensCard(
             hasDictionary = hasDictionary,
+            liveReadingEnabled = liveReadingEnabled,
             onOpenDictionaries = onOpenDictionaries,
+            onOpenLiveReading = onOpenLiveReading,
         )
     }
     }
@@ -162,13 +183,15 @@ fun ScanHomeContent(
 
 /**
  * The screen lens is a Quick Settings tile, not a button here: opening this screen
- * makes Jisho Lens the foreground app, so a capture started from here would photograph
- * Jisho Lens. The card explains the tile and asks the system to add it where it can.
+ * makes Jisho Lens the foreground app, so a lens started from here would read Jisho
+ * Lens. The card explains the one-time grant and the tile.
  */
 @Composable
 private fun ScreenLensCard(
     hasDictionary: Boolean,
+    liveReadingEnabled: Boolean,
     onOpenDictionaries: () -> Unit,
+    onOpenLiveReading: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -190,7 +213,11 @@ private fun ScreenLensCard(
                 Text("Read the screen you are looking at", style = MaterialTheme.typography.titleMediumEmphasized)
             }
             Text(
-                text = "Add the Screen lens tile to Quick settings, then tap it in any app. It captures one frame and every word on it becomes tappable.",
+                text = if (liveReadingEnabled) {
+                    "Live reading is on. Tap the Screen lens tile over any app: words highlight in place, and tapping one opens its entry."
+                } else {
+                    "Turn on live reading once, then tap the Screen lens tile over any app. Words highlight in place; nothing is frozen."
+                },
                 modifier = Modifier.padding(top = 8.dp),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -198,6 +225,10 @@ private fun ScreenLensCard(
             if (!hasDictionary) {
                 TextButton(onClick = onOpenDictionaries, modifier = Modifier.padding(top = 4.dp)) {
                     Text("Set up a dictionary first")
+                }
+            } else if (!liveReadingEnabled) {
+                TextButton(onClick = onOpenLiveReading, modifier = Modifier.padding(top = 4.dp)) {
+                    Text("Set up live reading")
                 }
             } else {
                 Text(

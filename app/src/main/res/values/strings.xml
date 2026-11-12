@@ -6,9 +6,6 @@
     <string name="import_notification_cancel">Cancel</string>
     <string name="lookup_label">Look up in Jisho Lens</string>
     <string name="screen_lens_tile">Screen lens</string>
-    <string name="screen_lens_channel_name">Screen reading</string>
-    <string name="screen_lens_channel_description">Shows that Jisho Lens is holding a screen capture session</string>
-    <string name="screen_lens_notification_title">Jisho Lens is reading this screen</string>
-    <string name="screen_lens_notification_text">Only the frame you captured is kept, in memory</string>
-    <string name="screen_lens_notification_stop">Stop</string>
+    <string name="screen_lens_service_label">Live reading</string>
+    <string name="accessibility_service_description">Reads Japanese text from the app on your screen so you can look up words without leaving the page. Text is read on this device and is never stored, sent, or shared.</string>
 </resources>

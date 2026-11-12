@@ -17,6 +17,7 @@ import androidx.compose.material.icons.automirrored.rounded.LibraryBooks
 import androidx.compose.material.icons.automirrored.rounded.ManageSearch
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.BugReport
+import androidx.compose.material.icons.rounded.CenterFocusStrong
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Palette
@@ -33,8 +34,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TonalToggleButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -44,9 +49,14 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.elianiva.jisholens.BuildConfig
 import com.elianiva.jisholens.data.AppContainer
+import com.elianiva.jisholens.screen.LensAccessibilityService
+import com.elianiva.jisholens.screen.LensSetupActivity
 import com.elianiva.jisholens.data.AppTheme
 import com.elianiva.jisholens.data.Settings
 import com.elianiva.jisholens.ui.components.SectionLabel
@@ -64,6 +74,15 @@ fun SettingsScreen(
     val scope = rememberCoroutineScope()
     val uriHandler = LocalUriHandler.current
     val context = LocalContext.current
+    var liveReading by remember { mutableStateOf(LensAccessibilityService.isEnabled(context)) }
+    val owner = LocalLifecycleOwner.current
+    DisposableEffect(owner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) liveReading = LensAccessibilityService.isEnabled(context)
+        }
+        owner.lifecycle.addObserver(observer)
+        onDispose { owner.lifecycle.removeObserver(observer) }
+    }
 
     fun open(url: String) {
         try {
@@ -89,6 +108,8 @@ fun SettingsScreen(
         onFullText = { scope.launch { container.settings.setFullTextSearch(it) } },
         onOpenDictionaries = onOpenDictionaries,
         onOpenLink = ::open,
+        liveReading = liveReading,
+        onOpenLiveReading = { context.startActivity(LensSetupActivity.intent(context)) },
     )
 }
 
@@ -104,6 +125,8 @@ fun SettingsContent(
     onOpenDictionaries: () -> Unit,
     onOpenLink: (String) -> Unit,
     modifier: Modifier = Modifier,
+    liveReading: Boolean = false,
+    onOpenLiveReading: () -> Unit = {},
 ) {
     val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
@@ -187,6 +210,19 @@ fun SettingsContent(
                     leadingContent = { RowIcon(Icons.AutoMirrored.Rounded.ManageSearch) },
                     trailingContent = { Switch(checked = settings.fullTextSearch, onCheckedChange = null) },
                     content = { Text("Search inside definitions") },
+                )
+            }
+
+            SectionLabel("Screen lens")
+            SegmentedList {
+                SegmentedListItem(
+                    onClick = onOpenLiveReading,
+                    shapes = ListItemDefaults.segmentedShapes(0, 1),
+                    colors = segmentedItemColors(),
+                    leadingContent = { RowIcon(Icons.Rounded.CenterFocusStrong) },
+                    supportingContent = { Text(if (liveReading) "On" else "Off") },
+                    trailingContent = { Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null) },
+                    content = { Text("Live reading") },
                 )
             }
 

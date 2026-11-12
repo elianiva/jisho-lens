@@ -1,6 +1,5 @@
 package com.elianiva.jisholens.ui.screens
 
-import android.graphics.Rect
 import com.elianiva.jisholens.data.TextLineBox
 import kotlin.math.abs
 
@@ -33,7 +32,3 @@ internal fun lineAt(lines: List<TextLineBox>, x: Float, y: Float): Int {
     val line = lines[nearest]
     return if (abs(line.rect.centerY() - y) <= line.rect.height()) nearest else -1
 }
-
-/** True when the card belongs above the tapped line: the line is in the bottom 45% of the frame. */
-internal fun cardAtTop(line: Rect, frameHeight: Int): Boolean =
-    frameHeight > 0 && line.centerY() > frameHeight * 0.55f

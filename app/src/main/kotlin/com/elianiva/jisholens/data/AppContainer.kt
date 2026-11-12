@@ -12,7 +12,6 @@ class AppContainer(context: Context) {
     val settings = SettingsRepository(appContext)
     val importController = ImportController()
     val ocr = OcrEngine()
-    val screenFrames = ScreenFrameStore()
 
     val dictionaries = MutableStateFlow<List<DictionaryRecord>>(emptyList())
 

@@ -11,16 +11,16 @@ import com.elianiva.jisholens.R
 /**
  * The way in while another app is on screen.
  *
- * A menu item or a launcher shortcut cannot do this: opening either of them makes
- * Jisho Lens the foreground app, so the capture would show Jisho Lens. Tapping a
- * tile collapses the shade and hands control to [CaptureTriggerActivity], which is
- * transparent, so the frame is still the page the reader was reading.
+ * With live reading already granted, the tile opens [LensTriggerActivity] so the shade
+ * has time to collapse before the overlay reads the page. Without the grant it opens
+ * the disclosure and the system accessibility settings once; after that the tile does
+ * not ask again.
  */
-class ScreenScanTileService : TileService() {
+class LensTileService : TileService() {
     override fun onStartListening() {
         super.onStartListening()
         qsTile?.apply {
-            state = if (ScreenCaptureService.isRunning) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
+            state = if (LensAccessibilityService.isShowing) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
             label = getString(R.string.screen_lens_tile)
             updateTile()
         }
@@ -28,10 +28,12 @@ class ScreenScanTileService : TileService() {
 
     override fun onClick() {
         super.onClick()
-        val intent = CaptureTriggerActivity.intent(this)
+        val intent = if (LensAccessibilityService.isEnabled(this)) {
+            LensTriggerActivity.intent(this)
+        } else {
+            LensSetupActivity.intent(this)
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            // Android 14 asks for a PendingIntent so the system can collapse the shade
-            // itself before the activity appears.
             startActivityAndCollapse(
                 PendingIntent.getActivity(
                     this,
@@ -41,8 +43,6 @@ class ScreenScanTileService : TileService() {
                 ),
             )
         } else {
-            // Below Android 14 the Intent overload is the only one, and it is not the
-            // one that throws. The version check above keeps it off newer systems.
             @Suppress("DEPRECATION")
             @SuppressLint("StartActivityAndCollapseDeprecated")
             startActivityAndCollapse(intent)

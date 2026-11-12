@@ -3,8 +3,6 @@ package com.elianiva.jisholens.ui.screens
 import android.graphics.Rect
 import com.elianiva.jisholens.data.TextLineBox
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -41,12 +39,5 @@ class ScanTapTest {
         assertEquals(3, charIndexAt(first, 170f))
         assertEquals(first.text.lastIndex, charIndexAt(first, 299f))
         assertEquals(0, charIndexAt(first, null))
-    }
-
-    @Test
-    fun `the card moves above a word in the bottom half`() {
-        assertFalse(cardAtTop(Rect(0, 100, 300, 160), frameHeight = 1400))
-        assertTrue(cardAtTop(Rect(0, 1000, 300, 1100), frameHeight = 1400))
-        assertFalse(cardAtTop(Rect(0, 1000, 300, 1100), frameHeight = 0))
     }
 }
