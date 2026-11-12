@@ -35,14 +35,24 @@ The native app does not read the 1.x database. Import a Yomitan `.zip` dictionar
 - Material 3 Expressive design with Google Sans Flex. Light, dark, and system themes, with dynamic color on Android 12 and later and a blue fallback.
 - Share an image to the app, or select text in another app and use the Look up action.
 - No storage permission. The app uses the system file picker and a foreground service for imports.
-- The network is used only for a dictionary download that you start. Scanning, OCR, and lookup stay on the device.
+- Scanning, OCR, and lookup run on the device. The network is used for a dictionary download that you start, and once for the Japanese text model that Google Play services installs.
 - Live reading reads text and window bounds from the active app on the device. The OCR fallback keeps one bitmap in memory and recycles it. Nothing is written to disk or sent. The lens closes when you close it, when the screen turns off, or after ten idle minutes.
+
+## Components
+
+A component is a part of the app that lives outside the APK. Each one has a kind:
+
+- `Engine` runs a feature. The Japanese text model is the first component, and Google Play services installs it.
+- `Entries` holds dictionary data that lookups read from.
+
+`ComponentManager` checks every component when the app opens and downloads what is missing in the background. A pill above the navigation bar shows each download with its percentage, offers Retry when one fails, and disappears once the parts are ready. Dictionaries keep their own flow, because the reader chooses which ones to add.
 
 ## Limitations
 
 - The native app is a preview. It has no signed stable release yet.
 - Segmentation loads the IPADIC model once per process (about 36 MB of heap) and adds about 13 MB to the APK.
 - Vertical manga text and stylized fonts are harder for ML Kit. Crop and zoom the image when recognition is poor.
+- The text recognition model comes from Google Play services, so the image fallback needs Play services on the device. The model arrives with the install or when the app first opens.
 - Live reading uses Android's `AccessibilityService`. It only sees text an app exposes in its accessibility tree. Manga, images, and custom-drawn text use an in-memory screenshot and ML Kit on Android 11 and later, and a protected window refuses the screenshot. While the lens is open it takes touches. Swipe to scroll the app, or close the lens to interact with the page.
 - Google Play requires a Permissions Declaration for the `AccessibilityService` API. The app declares `isAccessibilityTool=false` because it is a language-learning aid, not a screen reader for people with disabilities, and shows the disclosure before the system grant. A Play release needs that declaration.
 - The Anki action uses AnkiDroid's `ACTION_SEND` contract, not its LGPL-3.0 library, so the note is opened in AnkiDroid for you to confirm instead of being written silently. Without AnkiDroid the note goes to the system share sheet.
@@ -63,7 +73,7 @@ The disclosure is in `app/src/main/kotlin/com/elianiva/jisholens/ui/screens/Lens
 - DataStore for settings
 - `androidx.sqlite` bundled SQLite behind the `:dictionary` interface
 - FTS4 with `unicode61` for search
-- AccessibilityService with a `TYPE_ACCESSIBILITY_OVERLAY` Compose window, and ML Kit Japanese text recognition for images
+- AccessibilityService with a `TYPE_ACCESSIBILITY_OVERLAY` Compose window, and ML Kit Japanese text recognition for images, with the model installed by Google Play services
 - Kuromoji 0.9.0 with the IPADIC model for segmentation (Apache-2.0)
 - Gradle 9.9.1 and AGP 9.5.1
 

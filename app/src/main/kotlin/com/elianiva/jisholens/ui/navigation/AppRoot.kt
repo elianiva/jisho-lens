@@ -13,6 +13,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CameraAlt
@@ -41,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination
@@ -53,6 +55,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.elianiva.jisholens.data.AppContainer
+import com.elianiva.jisholens.ui.components.ComponentDownloadPill
 import com.elianiva.jisholens.ui.screens.DictionariesScreen
 import com.elianiva.jisholens.ui.screens.OnboardingScreen
 import com.elianiva.jisholens.ui.screens.ScanHomeScreen
@@ -92,6 +95,7 @@ fun AppRoot(
 ) {
     val settings by container.settings.settings.collectAsStateWithLifecycle(initialValue = null)
     val dictionaries by container.dictionaries.collectAsStateWithLifecycle()
+    val components by container.components.statuses.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         container.refreshDictionaries()
@@ -192,61 +196,76 @@ fun AppRoot(
                         }
                     }
                 }
-                NavHost(
-                    navController = navController,
-                    startDestination = if (!loaded.onboardingComplete && dictionaries.isEmpty()) {
-                        OnboardingRoute
-                    } else {
-                        SearchRoute
-                    },
-                    modifier = Modifier.weight(1f),
-                    enterTransition = { enter() },
-                    exitTransition = { exit() },
-                    popEnterTransition = { fadeIn(effects) + scaleIn(spatial, initialScale = 0.96f) },
-                    popExitTransition = { popExit() },
-                ) {
-                    composable<SearchRoute> {
-                        SearchScreen(
-                            container = container,
-                            onOpenDictionaries = { navController.navigate(DictionariesRoute) },
-                        )
+                Box(Modifier.weight(1f)) {
+                    NavHost(
+                        navController = navController,
+                        startDestination = if (!loaded.onboardingComplete && dictionaries.isEmpty()) {
+                            OnboardingRoute
+                        } else {
+                            SearchRoute
+                        },
+                        modifier = Modifier.fillMaxSize(),
+                        enterTransition = { enter() },
+                        exitTransition = { exit() },
+                        popEnterTransition = { fadeIn(effects) + scaleIn(spatial, initialScale = 0.96f) },
+                        popExitTransition = { popExit() },
+                    ) {
+                        composable<SearchRoute> {
+                            SearchScreen(
+                                container = container,
+                                onOpenDictionaries = { navController.navigate(DictionariesRoute) },
+                            )
+                        }
+                        composable<ScanHomeRoute> {
+                            ScanHomeScreen(
+                                container = container,
+                                onScan = { path -> navController.navigate(ScanRoute(path)) },
+                                onOpenDictionaries = { navController.navigate(DictionariesRoute) },
+                            )
+                        }
+                        composable<SettingsRoute> {
+                            SettingsScreen(
+                                container = container,
+                                onOpenDictionaries = { navController.navigate(DictionariesRoute) },
+                            )
+                        }
+                        composable<DictionariesRoute> {
+                            DictionariesScreen(
+                                container = container,
+                                onBack = { navController.popBackStack() },
+                            )
+                        }
+                        composable<OnboardingRoute> {
+                            OnboardingScreen(
+                                container = container,
+                                onDone = {
+                                    navController.navigate(SearchRoute) {
+                                        popUpTo(navController.graph.findStartDestination().id) { inclusive = true }
+                                        launchSingleTop = true
+                                    }
+                                },
+                            )
+                        }
+                        composable<ScanRoute> { entry ->
+                            val route = entry.toRoute<ScanRoute>()
+                            ScanScreen(
+                                container = container,
+                                imagePath = route.imagePath,
+                                onBack = { navController.popBackStack() },
+                            )
+                        }
                     }
-                    composable<ScanHomeRoute> {
-                        ScanHomeScreen(
-                            container = container,
-                            onScan = { path -> navController.navigate(ScanRoute(path)) },
-                            onOpenDictionaries = { navController.navigate(DictionariesRoute) },
-                        )
-                    }
-                    composable<SettingsRoute> {
-                        SettingsScreen(
-                            container = container,
-                            onOpenDictionaries = { navController.navigate(DictionariesRoute) },
-                        )
-                    }
-                    composable<DictionariesRoute> {
-                        DictionariesScreen(
-                            container = container,
-                            onBack = { navController.popBackStack() },
-                        )
-                    }
-                    composable<OnboardingRoute> {
-                        OnboardingScreen(
-                            container = container,
-                            onDone = {
-                                navController.navigate(SearchRoute) {
-                                    popUpTo(navController.graph.findStartDestination().id) { inclusive = true }
-                                    launchSingleTop = true
-                                }
-                            },
-                        )
-                    }
-                    composable<ScanRoute> { entry ->
-                        val route = entry.toRoute<ScanRoute>()
-                        ScanScreen(
-                            container = container,
-                            imagePath = route.imagePath,
-                            onBack = { navController.popBackStack() },
+                    // The frozen reader is a full-screen view with its own status, so it
+                    // keeps the downloads to itself.
+                    val readerOpen = backStackEntry?.destination?.hasRoute<ScanRoute>() == true
+                    if (!readerOpen) {
+                        ComponentDownloadPill(
+                            statuses = components,
+                            onRetry = container.components::retry,
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .then(if (barVisible && !wide) Modifier else Modifier.navigationBarsPadding())
+                                .padding(16.dp),
                         )
                     }
                 }

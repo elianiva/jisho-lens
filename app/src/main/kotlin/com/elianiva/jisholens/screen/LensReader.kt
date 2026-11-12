@@ -16,6 +16,7 @@ import androidx.core.content.ContextCompat
 import com.elianiva.jisholens.data.OcrEngine
 import com.elianiva.jisholens.data.TextLineBox
 import com.elianiva.jisholens.dictionary.FtsText
+import com.google.mlkit.common.MlKitException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
@@ -91,6 +92,12 @@ class LensNodeReader(
                 ocr.recognize(shot.bitmap)
             } catch (cancelled: CancellationException) {
                 throw cancelled
+            } catch (unavailable: MlKitException) {
+                // The model is installed by Play services and may still be arriving.
+                if (unavailable.errorCode == MlKitException.UNAVAILABLE) {
+                    return LensReading.OcrUnavailable
+                }
+                emptyList()
             } catch (_: Exception) {
                 emptyList()
             }

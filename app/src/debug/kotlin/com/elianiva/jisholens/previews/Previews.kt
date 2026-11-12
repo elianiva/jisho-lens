@@ -11,6 +11,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -19,10 +20,14 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.elianiva.jisholens.data.ComponentKind
+import com.elianiva.jisholens.data.ComponentState
+import com.elianiva.jisholens.data.ComponentStatus
 import com.elianiva.jisholens.data.ImportState
 import com.elianiva.jisholens.data.Settings
 import com.elianiva.jisholens.dictionary.DictionaryRecord
 import com.elianiva.jisholens.dictionary.ImportSummary
+import com.elianiva.jisholens.ui.components.ComponentDownloadPill
 import com.elianiva.jisholens.ui.components.EntryCard
 import com.elianiva.jisholens.ui.components.WithoutDecorativeMotion
 import com.elianiva.jisholens.ui.screens.DictionariesContent
@@ -427,4 +432,40 @@ fun LensSetup() = Frame(false) {
 @Composable
 fun LensSetupOn() = Frame(false) {
     LensSetupScreen(enabled = true, onOpenSettings = {}, onDone = {})
+}
+
+@Preview(name = "Component downloading", widthDp = W, heightDp = 240)
+@Composable
+fun ComponentDownloading() = Frame(false) {
+    Box(Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.BottomCenter) {
+        ComponentDownloadPill(
+            statuses = listOf(
+                ComponentStatus(
+                    id = "ocr-japanese",
+                    kind = ComponentKind.ENGINE,
+                    title = "Japanese text recognition",
+                    state = ComponentState.Downloading(45),
+                ),
+            ),
+            onRetry = {},
+        )
+    }
+}
+
+@Preview(name = "Component download failed", widthDp = W, heightDp = 240)
+@Composable
+fun ComponentDownloadFailed() = Frame(false) {
+    Box(Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.BottomCenter) {
+        ComponentDownloadPill(
+            statuses = listOf(
+                ComponentStatus(
+                    id = "ocr-japanese",
+                    kind = ComponentKind.ENGINE,
+                    title = "Japanese text recognition",
+                    state = ComponentState.Failed,
+                ),
+            ),
+            onRetry = {},
+        )
+    }
 }

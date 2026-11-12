@@ -109,6 +109,13 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
+        <!-- The Japanese OCR model lives in Google Play services, not in the app.
+             Play installs it with the app, so the lens reads on the first tap; a
+             sideload fetches it on first use. -->
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="ocr_japanese" />
+
     </application>
 
     <queries>

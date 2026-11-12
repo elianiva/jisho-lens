@@ -32,6 +32,7 @@ All notable changes to this project will be documented in this file. See [standa
 
 ### Notes
 
+* components: parts that live outside the APK register with `ComponentManager`, which downloads them when the app opens and reports progress in a pill above the navigation bar; the Japanese text model is the first `Engine` component, installed by Google Play services, which removes the 41 MB of OCR native code the APK used to carry
 * Material 3 Expressive comes from `material3` 1.5.0-rc01, which needs Compose 1.12, compileSdk 37 and AGP 9.1. Stable material3 1.4.0 has no Expressive APIs
 * live reading uses an accessibility overlay, not MediaProjection. There is no screen-share consent per lookup and no capture notification. The lens skips password fields, closes after ten idle minutes or when the screen turns off, and image OCR needs Android 11
 * Google Play requires an AccessibilityService declaration for live reading; the app shows the disclosure before the system grant and declares `isAccessibilityTool=false` because it is a language-learning aid

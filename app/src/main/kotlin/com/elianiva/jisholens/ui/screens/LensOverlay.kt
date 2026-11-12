@@ -486,8 +486,8 @@ private fun MessageCard(
             body = "A protected window cannot be read. Copy the text and look it up instead."
         }
         LensMessage.OcrUnavailable -> {
-            title = "Image reading needs Android 11"
-            body = "Text from the app works on this version. Reading an image needs Android 11 or newer."
+            title = "Image reading is not available"
+            body = "Reading an image needs Android 11 and the Japanese text model from Google Play. Text from the app still works."
         }
         LensMessage.Failed -> {
             title = "The screen was not read"
