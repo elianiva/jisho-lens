@@ -1,5 +1,7 @@
 package com.elianiva.jisholens.previews
 
+import android.graphics.Rect
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,7 +12,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.elianiva.jisholens.data.ImportState
 import com.elianiva.jisholens.data.Settings
@@ -21,19 +28,22 @@ import com.elianiva.jisholens.ui.components.WithoutDecorativeMotion
 import com.elianiva.jisholens.ui.screens.DictionariesContent
 import com.elianiva.jisholens.ui.screens.DictionaryStatus
 import com.elianiva.jisholens.ui.screens.OnboardingContent
-import com.elianiva.jisholens.domain.Entry
 import com.elianiva.jisholens.domain.ScanWord
-import com.elianiva.jisholens.ui.screens.ReaderLine
+import com.elianiva.jisholens.screen.LensLine
+import com.elianiva.jisholens.screen.LensMessage
+import com.elianiva.jisholens.screen.LensUiState
+import com.elianiva.jisholens.ui.components.fitOrigin
+import com.elianiva.jisholens.ui.components.fitScale
+import com.elianiva.jisholens.ui.screens.LensOverlayContent
+import com.elianiva.jisholens.ui.screens.LensSetupScreen
 import com.elianiva.jisholens.ui.screens.ScanContent
 import com.elianiva.jisholens.ui.screens.ScanHomeContent
 import com.elianiva.jisholens.ui.screens.ScanUiState
-import com.elianiva.jisholens.ui.screens.ScreenScanContent
-import com.elianiva.jisholens.ui.screens.ScreenScanMessage
-import com.elianiva.jisholens.ui.screens.ScreenScanUiState
 import com.elianiva.jisholens.ui.screens.SearchContent
 import com.elianiva.jisholens.ui.screens.SearchUiState
 import com.elianiva.jisholens.ui.screens.SettingsContent
 import com.elianiva.jisholens.ui.theme.JishoLensTheme
+import kotlin.math.roundToInt
 
 private const val W = 411
 private const val H = 891
@@ -274,154 +284,147 @@ fun AppIcon() {
 }
 
 @Composable
-private fun Screen(
-    state: ScreenScanUiState,
-    dark: Boolean = false,
-) = Frame(dark) {
-    ScreenScanContent(
-        state = state,
-        loadMedia = noMedia,
-        onTap = { _, _ -> },
-        onSelectCandidate = {},
-        onToggleKnown = {},
-        onToggleReader = {},
-        onSelectReaderWord = { _, _ -> },
-        onClearSelection = {},
-        onExpand = {},
-        onCollapse = {},
-        onSearchLine = {},
-        onCopy = {},
-        onMine = {},
-        onRescan = {},
-        onClose = {},
-    )
+private fun Lens(state: LensUiState, dark: Boolean = false, showPage: Boolean = true) = Frame(dark) {
+    val (bitmap, _) = Samples.screenPage
+    Box(Modifier.fillMaxSize().background(PageColor)) {
+        if (showPage) {
+            Canvas(Modifier.fillMaxSize()) {
+                val canvas = IntSize(size.width.toInt(), size.height.toInt())
+                val base = fitScale(canvas, bitmap.width, bitmap.height)
+                val origin = fitOrigin(canvas, bitmap.width, bitmap.height, base)
+                withTransform({
+                    translate(origin.x, origin.y)
+                    scale(scaleX = base, scaleY = base, pivot = Offset.Zero)
+                }) {
+                    drawImage(bitmap.asImageBitmap())
+                }
+            }
+        }
+        LensOverlayContent(
+            state = state,
+            screenSize = IntSize(bitmap.width, bitmap.height),
+            loadMedia = noMedia,
+            onTap = { _, _ -> },
+            onSelectCandidate = {},
+            onToggleKnown = {},
+            onExpand = {},
+            onCollapse = {},
+            onClearSelection = {},
+            onRescan = {},
+            onReadImage = {},
+            onScroll = {},
+            onCopy = {},
+            onMine = {},
+            onClose = {},
+        )
+    }
 }
 
-private fun screenState(
-    message: ScreenScanMessage? = null,
+private val PageColor = Color(0xFFF6F0E2)
+
+/** The sample page's lines with one box per character, as the text layer would provide. */
+private val lensLines: List<LensLine> by lazy {
+    Samples.screenPage.second.map { box ->
+        val width = box.rect.width().toFloat() / box.text.length
+        val characters = box.text.indices.map { index ->
+            Rect(
+                box.rect.left + (width * index).roundToInt(),
+                box.rect.top,
+                box.rect.left + (width * (index + 1)).roundToInt(),
+                box.rect.bottom,
+            )
+        }
+        LensLine(box.text, box.rect, characters)
+    }
+}
+
+private fun lensState(
+    lines: List<LensLine> = lensLines,
     candidates: List<ScanWord> = emptyList(),
-    selectedLine: Int = 1,
-    cardAtTop: Boolean = false,
-    loading: Boolean = false,
-    reader: Boolean = false,
-    readerLines: List<ReaderLine> = emptyList(),
+    selectedLine: Int = -1,
+    message: LensMessage? = null,
+    scanning: Boolean = false,
     expanded: Boolean = false,
-    withFrame: Boolean = true,
     knownWords: Set<String> = emptySet(),
-): ScreenScanUiState {
-    val (bitmap, lines) = Samples.screenPage
-    return ScreenScanUiState(
-        frame = if (withFrame) bitmap else null,
-        lines = if (withFrame) lines else emptyList(),
-        loading = loading,
-        message = message,
-        selectedLine = if (message == null) selectedLine else -1,
-        candidates = candidates,
-        selectedCandidate = 0,
-        reader = reader,
-        readerLines = readerLines,
-        cardAtTop = cardAtTop,
-        expanded = expanded,
-        knownWords = knownWords,
-    )
-}
+    canReadImage: Boolean = true,
+): LensUiState = LensUiState(
+    lines = lines,
+    scanning = scanning,
+    message = message,
+    selectedLine = selectedLine,
+    candidates = candidates,
+    expanded = expanded,
+    knownWords = knownWords,
+    canReadImage = canReadImage,
+)
 
-private val tappedTabeta = ScanWord("食べた", 5, 8, listOf(Samples.tabeta))
+private val selectedTabeta = ScanWord("食べた", 5, 8, listOf(Samples.tabeta))
 
-@Preview(name = "Screen reader entry", widthDp = W, heightDp = H)
+@Preview(name = "Lens highlights", widthDp = W, heightDp = H)
 @Composable
-fun ScreenReaderEntry() = Screen(screenState(candidates = listOf(tappedTabeta), cardAtTop = true))
+fun LensHighlights() = Lens(lensState())
 
-@Preview(name = "Screen reader entry dark", widthDp = W, heightDp = H)
+@Preview(name = "Lens word", widthDp = W, heightDp = H)
 @Composable
-fun ScreenReaderEntryDark() = Screen(screenState(candidates = listOf(tappedTabeta), cardAtTop = true), dark = true)
+fun LensWord() = Lens(lensState(candidates = listOf(selectedTabeta), selectedLine = 1))
 
-@Preview(name = "Screen reader alternatives", widthDp = W, heightDp = H)
+@Preview(name = "Lens word dark", widthDp = W, heightDp = H)
 @Composable
-fun ScreenReaderAlternatives() = Screen(
-    screenState(
+fun LensWordDark() = Lens(lensState(candidates = listOf(selectedTabeta), selectedLine = 1), dark = true)
+
+@Preview(name = "Lens alternatives", widthDp = W, heightDp = H)
+@Composable
+fun LensAlternatives() = Lens(
+    lensState(
         candidates = listOf(
             ScanWord("食べ", 5, 7, listOf(Samples.taberu)),
-            tappedTabeta,
-            ScanWord("食べさせられた", 0, 7, listOf(Samples.taberareta)),
+            selectedTabeta,
+            ScanWord("食べさせられた", 5, 8, listOf(Samples.taberareta)),
         ),
-    ),
-    dark = true,
-)
-
-@Preview(name = "Screen reader no entry", widthDp = W, heightDp = H)
-@Composable
-fun ScreenReaderNoEntry() = Screen(screenState())
-
-@Preview(name = "Screen reader hint", widthDp = W, heightDp = H)
-@Composable
-fun ScreenReaderHint() = Screen(screenState(selectedLine = -1))
-
-@Preview(name = "Screen reader loading", widthDp = W, heightDp = H)
-@Composable
-fun ScreenReaderLoading() = Screen(screenState(selectedLine = -1, loading = true))
-
-@Preview(name = "Screen reader no text", widthDp = W, heightDp = H)
-@Composable
-fun ScreenReaderNoText() = Screen(screenState(message = ScreenScanMessage.NoText))
-
-@Preview(name = "Screen reader protected", widthDp = W, heightDp = H)
-@Composable
-fun ScreenReaderProtected() = Screen(screenState(message = ScreenScanMessage.Protected, withFrame = false))
-
-@Preview(name = "Screen reader consent denied", widthDp = W, heightDp = H)
-@Composable
-fun ScreenReaderConsent() = Screen(screenState(message = ScreenScanMessage.ConsentDenied, withFrame = false))
-
-@Preview(name = "Screen reader no frame", widthDp = W, heightDp = H)
-@Composable
-fun ScreenReaderNoFrame() = Screen(screenState(message = ScreenScanMessage.NoFrame, withFrame = false))
-
-@Preview(name = "Screen reader full entry", widthDp = W, heightDp = H)
-@Composable
-fun ScreenReaderExpanded() = Screen(
-    screenState(
-        candidates = listOf(tappedTabeta),
-        expanded = true,
+        selectedLine = 1,
     ),
 )
 
-@Preview(name = "Screen reader page", widthDp = W, heightDp = H)
+@Preview(name = "Lens no entry", widthDp = W, heightDp = H)
 @Composable
-fun ScreenReaderPage() = Screen(
-    screenState(
-        reader = true,
-        selectedLine = -1,
-        readerLines = listOf(
-            readerLine("昨日、友達と", emptyList()),
-            readerLine("ラーメンを食べた。", listOf("ラーメン" to Samples.ramen, "食べた" to Samples.tabeta)),
-            readerLine("とても美味しかった。", listOf("美味しかった" to Samples.oishikatta)),
-        ),
+fun LensNoEntry() = Lens(lensState(selectedLine = 2))
+
+@Preview(name = "Lens loading", widthDp = W, heightDp = H)
+@Composable
+fun LensLoading() = Lens(lensState(scanning = true))
+
+@Preview(name = "Lens no text", widthDp = W, heightDp = H)
+@Composable
+fun LensNoText() = Lens(lensState(lines = emptyList(), message = LensMessage.NoText), showPage = false)
+
+@Preview(name = "Lens protected", widthDp = W, heightDp = H)
+@Composable
+fun LensProtected() = Lens(lensState(lines = emptyList(), message = LensMessage.Protected), showPage = false)
+
+@Preview(name = "Lens full entry", widthDp = W, heightDp = H)
+@Composable
+fun LensExpanded() = Lens(
+    lensState(candidates = listOf(selectedTabeta), selectedLine = 1, expanded = true),
+)
+
+@Preview(name = "Lens known words", widthDp = W, heightDp = H)
+@Composable
+fun LensKnownWords() = Lens(
+    lensState(
+        candidates = listOf(selectedTabeta),
+        selectedLine = 1,
+        knownWords = setOf("食べる"),
     ),
 )
 
-@Preview(name = "Screen reader known words", widthDp = W, heightDp = H)
+@Preview(name = "Live reading setup", widthDp = W, heightDp = H)
 @Composable
-fun ScreenReaderKnownWords() = Screen(
-    screenState(
-        reader = true,
-        selectedLine = -1,
-        knownWords = setOf("食べる", "ラーメン"),
-        readerLines = listOf(
-            readerLine("昨日、友達と", emptyList()),
-            readerLine("ラーメンを食べた。", listOf("ラーメン" to Samples.ramen, "食べた" to Samples.tabeta)),
-            readerLine("とても美味しかった。", listOf("美味しかった" to Samples.oishikatta)),
-        ),
-    ),
-)
+fun LensSetup() = Frame(false) {
+    LensSetupScreen(enabled = false, onOpenSettings = {}, onDone = {})
+}
 
-/** One reader line whose words are placed at their real offsets in the text. */
-private fun readerLine(text: String, words: List<Pair<String, Entry>>): ReaderLine =
-    ReaderLine(
-        text = text,
-        rect = android.graphics.Rect(),
-        words = words.map { (surface, entry) ->
-            val start = text.indexOf(surface).coerceAtLeast(0)
-            ScanWord(surface, start, start + surface.length, listOf(entry))
-        },
-    )
+@Preview(name = "Live reading setup on", widthDp = W, heightDp = H)
+@Composable
+fun LensSetupOn() = Frame(false) {
+    LensSetupScreen(enabled = true, onOpenSettings = {}, onDone = {})
+}
