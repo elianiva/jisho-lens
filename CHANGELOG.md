@@ -13,10 +13,10 @@ All notable changes to this project will be documented in this file. See [standa
 * open on Look up, with Scan and Settings beside it; the navigation bar becomes a rail from 840 dp
 * add recent searches, search as you type, and a wallpaper-colors switch
 * use `com.elianiva` as the stable application ID and `com.elianiva.preview` for previews
-* read the screen from a Quick Settings tile: one MediaProjection frame, ML Kit OCR, every word on the frozen page tappable, and `scanAt` offers the shorter candidates the greedy scan drops
+* read the screen live from a Quick Settings tile with one accessibility grant: Japanese text highlights in place, a results sheet slides up, a vertical swipe scrolls the app, and ML Kit OCR reads images through an accessibility screenshot
 * draw the pitch accent contour from a dictionary's `pitch` metadata, with the pattern named
 * rank scan candidates and their entries by imported frequency data
-* mark words as known, dim them in reader mode, and show how much of the page is known
+* mark words as known, with a filled check on the entry the lens already knows
 * mine a word into an Anki note through AnkiDroid's `ACTION_SEND` contract, with the sentence, the pitch, and a share-sheet fallback
 * browse a Yomitan dictionary catalogue grouped into terms, kanji, frequency, pitch, and names or specialised entries, each with its licence and terms
 * download a four-entry starter set (Jitendex, KANJIDIC, Jiten, Wadoku pitch) or any entry whose publisher allows it in one tap, and point the rest at the publisher page for a manual import
@@ -29,7 +29,8 @@ All notable changes to this project will be documented in this file. See [standa
 ### Notes
 
 * Material 3 is pinned to 1.5.0-alpha18, the last 1.5 build that works with Compose 1.11, compileSdk 36 and AGP 8.13. Later builds need compileSdk 37 and AGP 9.1
-* the screen lens keeps one frame in memory and never writes it to disk; closing the reader stops the capture session, and the window is `FLAG_SECURE`
+* live reading uses an accessibility overlay, not MediaProjection. There is no screen-share consent per lookup and no capture notification. The lens skips password fields, closes after ten idle minutes or when the screen turns off, and image OCR needs Android 11
+* Google Play requires an AccessibilityService declaration for live reading; the app shows the disclosure before the system grant and declares `isAccessibilityTool=false` because it is a language-learning aid
 * Jitendex and JMdict in Yomitan format ship no `term_meta` banks, so the pitch contour and the frequency ranking show up with the frequency and pitch dictionaries from the catalogue
 * the Anki action uses AnkiDroid's documented `ACTION_SEND` contract, because its Instant-Add library is LGPL-3.0 and this app is MIT
 * the 1.x app and its `jmdict.db` database are not compatible with the native app

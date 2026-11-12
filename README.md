@@ -20,14 +20,14 @@ The native app does not read the 1.x database. Import a Yomitan `.zip` dictionar
 ## Features
 
 - Scan from the camera or the photo picker.
-- Read the screen you are looking at: add the Screen lens tile to Quick settings, tap it in any app, and every word on the captured frame becomes tappable. One frame per tap, no overlay permission, no accessibility service.
+- Read the screen you are looking at live: turn on Live reading once, tap the Screen lens tile in any app, and Japanese words highlight in place. Tap a word for its entry. The results sheet slides up and the page stays visible. A vertical swipe scrolls the app through its accessibility scroll action.
 - Tap a recognized line, then a dictionary word, to open its entry.
 - Search Japanese words, kanji, kana, and English glosses.
 - Deinflect conjugated input, so 食べさせられた finds 食べる.
 - Import several Yomitan dictionaries, enable them, reorder them, and remove them.
 - Show tags, glosses, cross references, images, frequency data, and the pitch accent contour from the dictionary's `pitch` metadata.
 - Rank scanned words and their entries by the imported frequency data, so the common word comes first.
-- Mark words as known. Reader mode dims them and shows how much of the page you know.
+- Mark words as known. The lens shows a filled check on an entry you already know.
 - Send a mined word to AnkiDroid with its reading, gloss, the sentence it came from, and its pitch accent.
 - Pick from a Yomitan dictionary catalogue grouped into terms, kanji, frequency, pitch, and names or specialised entries, with the size, licence, and terms of each.
 - Download the starter set, or any entry whose publisher allows it, in one tap; the rest link to the publisher page for a manual import.
@@ -35,16 +35,23 @@ The native app does not read the 1.x database. Import a Yomitan `.zip` dictionar
 - Share an image to the app, or select text in another app and use the Look up action.
 - No storage permission. The app uses the system file picker and a foreground service for imports.
 - The network is used only for a dictionary download that you start. Scanning, OCR, and lookup stay on the device.
-- A captured frame lives in memory only, and the reader is `FLAG_SECURE`, so the page never reaches the recents thumbnail or a screenshot. Closing the reader stops the capture session.
+- Live reading reads text and window bounds from the active app on the device. The OCR fallback keeps one bitmap in memory and recycles it. Nothing is written to disk or sent. The lens closes when you close it, when the screen turns off, or after ten idle minutes.
 
 ## Limitations
 
 - The native app is a preview. It has no signed stable release yet.
 - Vertical manga text and stylized fonts are harder for ML Kit. Crop and zoom the image when recognition is poor.
-- The screen lens captures one frame with the system MediaProjection consent. A protected window, such as a banking app or DRM video, captures as a blank frame. Live reading without a capture, over an accessibility service, is not implemented.
+- Live reading uses Android's `AccessibilityService`. It only sees text an app exposes in its accessibility tree. Manga, images, and custom-drawn text use an in-memory screenshot and ML Kit on Android 11 and later, and a protected window refuses the screenshot. While the lens is open it takes touches. Swipe to scroll the app, or close the lens to interact with the page.
+- Google Play requires a Permissions Declaration for the `AccessibilityService` API. The app declares `isAccessibilityTool=false` because it is a language-learning aid, not a screen reader for people with disabilities, and shows the disclosure before the system grant. A Play release needs that declaration.
 - The Anki action uses AnkiDroid's `ACTION_SEND` contract, not its LGPL-3.0 library, so the note is opened in AnkiDroid for you to confirm instead of being written silently. Without AnkiDroid the note goes to the system share sheet.
 - History, bookmarks, and a kanji screen are not part of this version.
 - The app ships no dictionary and mirrors none. Every catalogue entry points at its publisher, records its licence and terms, and only offers a one-tap download where those terms allow the app to fetch the file. JPDB and BCCWJ must be downloaded and imported by hand.
+
+### Live reading and Google Play
+
+Live reading uses `AccessibilityService`, not MediaProjection. There is no screen-share consent dialog per lookup and no capture notification. The trade-off is a Play policy declaration. The service is not an accessibility tool for people with disabilities, so a Play release must complete the AccessibilityService declaration and the app shows an in-app disclosure before sending the user to Accessibility settings.
+
+The disclosure is in `app/src/main/kotlin/com/elianiva/jisholens/ui/screens/LensSetupScreen.kt`. The service configuration is `app/src/main/res/xml/accessibility_service_config.xml`. The service reads the active window only while the lens is open, skips password fields, and keeps all text on the device.
 
 ## Tech stack
 
@@ -54,7 +61,7 @@ The native app does not read the 1.x database. Import a Yomitan `.zip` dictionar
 - DataStore for settings
 - `androidx.sqlite` bundled SQLite behind the `:dictionary` interface
 - FTS4 with `unicode61` for search
-- ML Kit Japanese text recognition
+- AccessibilityService with a `TYPE_ACCESSIBILITY_OVERLAY` Compose window, and ML Kit Japanese text recognition for images
 - Gradle 8.14.7 and AGP 8.13.2
 
 ## Build
