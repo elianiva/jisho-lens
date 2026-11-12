@@ -40,7 +40,7 @@ jobs:
           java-version: "17"
       - uses: android-actions/setup-android@v4
         with:
-          packages: "platform-tools platforms;android-36 build-tools;36.0.0"
+          packages: "platform-tools platforms;android-37.0 build-tools;36.0.0"
       - uses: gradle/actions/setup-gradle@v6
       - name: Lint
         run: ./gradlew :app:lintStableRelease --console=plain
@@ -57,7 +57,7 @@ jobs:
           java-version: "17"
       - uses: android-actions/setup-android@v4
         with:
-          packages: "platform-tools platforms;android-36 build-tools;36.0.0"
+          packages: "platform-tools platforms;android-37.0 build-tools;36.0.0"
       - uses: gradle/actions/setup-gradle@v6
       - name: Test
         run: ./gradlew :app:testPreviewDebugUnitTest --console=plain
@@ -102,7 +102,7 @@ jobs:
           java-version: "17"
       - uses: android-actions/setup-android@v4
         with:
-          packages: "platform-tools platforms;android-36 build-tools;36.0.0"
+          packages: "platform-tools platforms;android-37.0 build-tools;36.0.0"
       - uses: gradle/actions/setup-gradle@v6
       # The build opts this test task out of the cache, because Roborazzi writes
       # the screenshots outside its outputs, so it records on every run.
@@ -129,7 +129,7 @@ jobs:
           java-version: "17"
       - uses: android-actions/setup-android@v4
         with:
-          packages: "platform-tools platforms;android-36 build-tools;36.0.0"
+          packages: "platform-tools platforms;android-37.0 build-tools;36.0.0"
       - uses: gradle/actions/setup-gradle@v6
       - name: Build
         run: ./gradlew :app:assemblePreviewDebug :app:assembleStableRelease :app:bundleStableRelease --console=plain

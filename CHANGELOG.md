@@ -32,7 +32,7 @@ All notable changes to this project will be documented in this file. See [standa
 
 ### Notes
 
-* Material 3 is pinned to 1.5.0-alpha18, the last 1.5 build that works with Compose 1.11, compileSdk 36 and AGP 8.13. Later builds need compileSdk 37 and AGP 9.1
+* Material 3 Expressive comes from `material3` 1.5.0-rc01, which needs Compose 1.12, compileSdk 37 and AGP 9.1. Stable material3 1.4.0 has no Expressive APIs
 * live reading uses an accessibility overlay, not MediaProjection. There is no screen-share consent per lookup and no capture notification. The lens skips password fields, closes after ten idle minutes or when the screen turns off, and image OCR needs Android 11
 * Google Play requires an AccessibilityService declaration for live reading; the app shows the disclosure before the system grant and declares `isAccessibilityTool=false` because it is a language-learning aid
 * Jitendex and JMdict in Yomitan format ship no `term_meta` banks, so the pitch contour and the frequency ranking show up with the frequency and pitch dictionaries from the catalogue

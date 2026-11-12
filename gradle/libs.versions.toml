@@ -6,12 +6,11 @@ kuromoji = "0.9.0"
 junit = "5.14.4"
 junitPlatform = "1.14.4"
 
-agp = "8.13.2"
-composeBom = "2026.06.01"
-# The BOM pins material3 1.4.0, which has no expressive APIs. The 1.5 alphas carry them.
-# alpha18 is the last build on Compose 1.11 and compileSdk 36; later builds need Compose 1.12,
-# compileSdk 37 and AGP 9.1.
-material3 = "1.5.0-alpha18"
+agp = "9.5.1"
+composeBom = "2026.09.00"
+# The BOM pins the stable material3 1.4.0, which has no Expressive APIs. The 1.5
+# release candidate keeps them and needs Compose 1.12, compileSdk 37 and AGP 9.1.
+material3 = "1.5.0-rc01"
 graphicsShapes = "1.0.1"
 androidxActivity = "1.11.0"
 androidxCore = "1.17.0"
@@ -79,6 +78,5 @@ roborazzi-junit = { module = "io.github.takahirom.roborazzi:roborazzi-junit-rule
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 android-application = { id = "com.android.application", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 roborazzi = { id = "io.github.takahirom.roborazzi", version.ref = "roborazzi" }

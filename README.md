@@ -57,7 +57,7 @@ The disclosure is in `app/src/main/kotlin/com/elianiva/jisholens/ui/screens/Lens
 
 ## Tech stack
 
-- Kotlin 2.4 and Jetpack Compose with Material 3 Expressive (`material3` 1.5.0-alpha18)
+- Kotlin 2.4 and Jetpack Compose with Material 3 Expressive (`material3` 1.5.0-rc01)
 - ViewModel and StateFlow for screen state
 - Navigation Compose with type-safe routes
 - DataStore for settings
@@ -65,11 +65,11 @@ The disclosure is in `app/src/main/kotlin/com/elianiva/jisholens/ui/screens/Lens
 - FTS4 with `unicode61` for search
 - AccessibilityService with a `TYPE_ACCESSIBILITY_OVERLAY` Compose window, and ML Kit Japanese text recognition for images
 - Kuromoji 0.9.0 with the IPADIC model for segmentation (Apache-2.0)
-- Gradle 8.14.7 and AGP 8.13.2
+- Gradle 9.9.1 and AGP 9.5.1
 
 ## Build
 
-You need Android SDK platform 36 and JDK 17 or newer. Gradle provisions a Java 17
+You need Android SDK platform 37 and JDK 17 or newer. Gradle provisions a Java 17
 toolchain when your JDK differs, so a newer JDK also works.
 
 ```sh

@@ -26,7 +26,7 @@ jobs:
           java-version: "17"
       - uses: android-actions/setup-android@v4
         with:
-          packages: "platform-tools platforms;android-36 build-tools;36.0.0"
+          packages: "platform-tools platforms;android-37.0 build-tools;36.0.0"
       - uses: gradle/actions/setup-gradle@v6
 
       # A debug key made on a fresh runner would differ on every run, and an APK

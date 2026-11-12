@@ -1,8 +1,5 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.roborazzi)
@@ -35,12 +32,12 @@ val canSignRelease = listOf(keystoreFile, keystorePassword, keyAliasName, keyPas
 
 android {
     namespace = "com.elianiva.jisholens"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.elianiva"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 37
         versionCode = versionMajor * 10_000 + versionMinor * 100 + versionPatch
         versionName = appVersionName
 
@@ -88,6 +85,8 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        // Each flavor sets app_name with resValue.
+        resValues = true
     }
 
     compileOptions {
@@ -115,7 +114,6 @@ android {
 
 kotlin {
     compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_17)
         // The design system builds on Material 3 Expressive, which is still experimental.
         optIn.addAll(
             "androidx.compose.material3.ExperimentalMaterial3Api",

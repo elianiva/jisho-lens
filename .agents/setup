@@ -80,7 +80,7 @@ fi
 # Check each package, not just the platform: a setup that stopped halfway used
 # to leave build-tools or platform-tools missing while the platform existed.
 missing=()
-[ -d "$SDK_ROOT/platforms/android-36" ] || missing+=("platforms;android-36")
+[ -d "$SDK_ROOT/platforms/android-37.0" ] || missing+=("platforms;android-37.0")
 [ -d "$SDK_ROOT/build-tools/36.0.0" ] || missing+=("build-tools;36.0.0")
 [ -d "$SDK_ROOT/platform-tools" ] || missing+=("platform-tools")
 if [ "${#missing[@]}" -gt 0 ]; then
