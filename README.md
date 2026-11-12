@@ -29,7 +29,8 @@ The native app does not read the 1.x database. Import a Yomitan `.zip` dictionar
 - Rank scanned words and their entries by the imported frequency data, so the common word comes first.
 - Mark words as known. Reader mode dims them and shows how much of the page you know.
 - Send a mined word to AnkiDroid with its reading, gloss, the sentence it came from, and its pitch accent.
-- Download Jitendex or JMdict on first run, with the size and the licence shown, and import it in one tap.
+- Pick from a Yomitan dictionary catalogue grouped into terms, kanji, frequency, pitch, and names or specialised entries, with the size, licence, and terms of each.
+- Download the starter set, or any entry whose publisher allows it, in one tap; the rest link to the publisher page for a manual import.
 - Material 3 Expressive design with Google Sans Flex. Light, dark, and system themes, with dynamic color on Android 12 and later and a blue fallback.
 - Share an image to the app, or select text in another app and use the Look up action.
 - No storage permission. The app uses the system file picker and a foreground service for imports.
@@ -43,7 +44,7 @@ The native app does not read the 1.x database. Import a Yomitan `.zip` dictionar
 - The screen lens captures one frame with the system MediaProjection consent. A protected window, such as a banking app or DRM video, captures as a blank frame. Live reading without a capture, over an accessibility service, is not implemented.
 - The Anki action uses AnkiDroid's `ACTION_SEND` contract, not its LGPL-3.0 library, so the note is opened in AnkiDroid for you to confirm instead of being written silently. Without AnkiDroid the note goes to the system share sheet.
 - History, bookmarks, and a kanji screen are not part of this version.
-- The app ships no dictionary. Jitendex and JMdict are available from their publishers and are licensed under CC BY-SA 4.0.
+- The app ships no dictionary and mirrors none. Every catalogue entry points at its publisher, records its licence and terms, and only offers a one-tap download where those terms allow the app to fetch the file. JPDB and BCCWJ must be downloaded and imported by hand.
 
 ## Tech stack
 

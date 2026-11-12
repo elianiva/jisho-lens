@@ -85,19 +85,6 @@ class DictionaryDownloaderTest {
         assertFalse(target.exists())
         assertFalse(File(directory, "big.zip.part").exists())
     }
-
-    @Test
-    fun `the catalogue points at the publisher and says what it is`() {
-        assertTrue(DictionaryCatalog.sources.size >= 2)
-        for (source in DictionaryCatalog.sources) {
-            assertTrue(source.url.startsWith("https://"))
-            assertTrue(source.url.endsWith(".zip"))
-            assertTrue(source.pageUrl.startsWith("https://"))
-            assertTrue(source.sizeMegabytes > 0)
-            assertEquals("CC BY-SA 4.0", source.license)
-            assertTrue(source.description.isNotBlank())
-        }
-    }
 }
 
 /**

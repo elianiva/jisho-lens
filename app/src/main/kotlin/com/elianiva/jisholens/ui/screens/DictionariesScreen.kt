@@ -54,6 +54,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.elianiva.jisholens.data.AppContainer
 import com.elianiva.jisholens.data.ImportState
+import com.elianiva.jisholens.data.DictionaryCatalog
+import com.elianiva.jisholens.data.DictionaryKind
 import com.elianiva.jisholens.data.DictionarySource
 import com.elianiva.jisholens.dictionary.DictionaryRecord
 import com.elianiva.jisholens.ui.components.DictionaryShapes
@@ -88,7 +90,13 @@ fun DictionariesScreen(
             is ImportState.Done -> {
                 container.refreshDictionaries()
                 container.settings.setOnboardingComplete(true)
-                snackbar.showSnackbar("Imported ${state.summary.title}")
+                snackbar.showSnackbar(
+                    if (state.count > 1) {
+                        "Imported ${state.count} dictionaries"
+                    } else {
+                        "Imported ${state.summary.title}"
+                    },
+                )
             }
             is ImportState.Failed -> snackbar.showSnackbar(state.message)
             ImportState.Cancelled -> snackbar.showSnackbar("Import cancelled")
@@ -155,14 +163,19 @@ fun DictionariesContent(
     snackbar: SnackbarHostState,
     onBack: () -> Unit,
     onImport: () -> Unit,
-    onDownloadSource: (DictionarySource) -> Unit,
+    onDownloadSource: (List<DictionarySource>) -> Unit,
     onOpenSource: (DictionarySource) -> Unit,
     onCancelImport: () -> Unit,
     onEnabled: (DictionaryRecord, Boolean) -> Unit,
     onMove: (DictionaryRecord, Int) -> Unit,
     onDelete: (DictionaryRecord) -> Unit,
 ) {
-    val importing = importState is ImportState.Copying || importState is ImportState.Importing
+    var addMenu by remember { mutableStateOf(false) }
+    var catalogue by remember { mutableStateOf(false) }
+    val importing = importState is ImportState.Copying ||
+        importState is ImportState.Downloading ||
+        importState is ImportState.Importing
+    val showCatalogue = (dictionaries.isEmpty() || catalogue) && !importing
     val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
         modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
@@ -179,11 +192,33 @@ fun DictionariesContent(
         },
         floatingActionButton = {
             if (dictionaries.isNotEmpty() && !importing) {
-                ExtendedFloatingActionButton(
-                    onClick = onImport,
-                    icon = { Icon(Icons.Rounded.Add, contentDescription = null) },
-                    text = { Text("Import") },
-                )
+                Box {
+                    ExtendedFloatingActionButton(
+                        onClick = { addMenu = true },
+                        icon = { Icon(Icons.Rounded.Add, contentDescription = null) },
+                        text = { Text("Add") },
+                    )
+                    DropdownMenu(expanded = addMenu, onDismissRequest = { addMenu = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Browse catalogue") },
+                            leadingIcon = {
+                                Icon(Icons.AutoMirrored.Rounded.LibraryBooks, contentDescription = null)
+                            },
+                            onClick = {
+                                addMenu = false
+                                catalogue = true
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Import a .zip file") },
+                            leadingIcon = { Icon(Icons.Rounded.Add, contentDescription = null) },
+                            onClick = {
+                                addMenu = false
+                                onImport()
+                            },
+                        )
+                    }
+                }
             }
         },
         snackbarHost = { SnackbarHost(snackbar) },
@@ -222,6 +257,29 @@ fun DictionariesContent(
                     }
                 }
             } else {
+                if (showCatalogue) {
+                    item(key = "catalogue") {
+                        Column {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    text = "Dictionary catalogue",
+                                    modifier = Modifier.weight(1f).padding(start = 8.dp),
+                                    style = MaterialTheme.typography.titleMediumEmphasized,
+                                )
+                                TextButton(onClick = { catalogue = false }) { Text("Hide") }
+                            }
+                            DictionarySourceList(
+                                onDownload = onDownloadSource,
+                                onOpenPage = onOpenSource,
+                                modifier = Modifier.padding(bottom = 16.dp),
+                                enabled = !importing,
+                            )
+                        }
+                    }
+                }
                 item(key = "stored") {
                     Text(
                         text = "${dictionaries.size} on this device · ${formatBytes(storedBytes)}",
@@ -283,14 +341,7 @@ private fun DictionaryRow(
             }
         },
         supportingContent = {
-            Text(
-                text = buildString {
-                    append(dictionary.revision.ifBlank { "unknown revision" })
-                    dictionary.counts["terms"]?.let { append(" · %,d terms".format(it)) }
-                    dictionary.counts["kanji"]?.let { append(" · %,d kanji".format(it)) }
-                },
-                maxLines = 2,
-            )
+            Text(text = dictionary.summaryLine(), maxLines = 2)
         },
         trailingContent = {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -324,3 +375,22 @@ private fun DictionaryRow(
         content = { Text(dictionary.title, maxLines = 1) },
     )
 }
+
+/** The kind, revision, and entry count a dictionary actually contributes. */
+private fun DictionaryRecord.summaryLine(): String = buildString {
+    val kind = DictionaryCatalog.kindOf(this@summaryLine)
+    kind?.let { append(it.label).append(" · ") }
+    append(revision.ifBlank { "unknown revision" })
+    when (kind) {
+        DictionaryKind.KANJI -> counts.positive("kanji")?.let { append(" · %,d kanji".format(it)) }
+        DictionaryKind.FREQUENCY -> (counts.positive("termMeta") ?: counts.positive("kanjiMeta"))
+            ?.let { append(" · %,d entries".format(it)) }
+        DictionaryKind.PITCH -> counts.positive("termMeta")?.let { append(" · %,d pitches".format(it)) }
+        else -> {
+            counts.positive("terms")?.let { append(" · %,d terms".format(it)) }
+            counts.positive("kanji")?.let { append(" · %,d kanji".format(it)) }
+        }
+    }
+}
+
+private fun Map<String, Int>.positive(key: String): Int? = this[key]?.takeIf { it > 0 }

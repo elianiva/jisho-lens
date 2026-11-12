@@ -15,7 +15,11 @@ object TermMetaParser {
     fun frequency(data: String): Double? = runCatching {
         when (val element = Json.parseToJsonElement(data)) {
             is JsonPrimitive -> element.doubleOrNull ?: element.contentOrNull?.toDoubleOrNull()
-            is JsonObject -> (element["value"] as? JsonPrimitive)?.doubleOrNull
+            // BCCWJ stores the count under `frequency` instead of `value`.
+            is JsonObject -> {
+                val value = (element["value"] ?: element["frequency"]) as? JsonPrimitive
+                value?.doubleOrNull ?: value?.contentOrNull?.toDoubleOrNull()
+            }
             else -> null
         }
     }.getOrNull()

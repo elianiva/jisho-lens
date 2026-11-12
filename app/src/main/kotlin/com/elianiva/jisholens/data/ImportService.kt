@@ -23,6 +23,7 @@ import com.elianiva.jisholens.JishoLensApp
 import com.elianiva.jisholens.MainActivity
 import com.elianiva.jisholens.R
 import com.elianiva.jisholens.dictionary.ImportCancelledException
+import com.elianiva.jisholens.dictionary.ImportSummary
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -56,14 +57,15 @@ class ImportService : Service() {
                 scope.launch { runImport(uri) }
             }
             ACTION_DOWNLOAD -> {
-                val url = intent.getStringExtra(EXTRA_URL)
-                val title = intent.getStringExtra(EXTRA_TITLE) ?: "dictionary"
-                if (url == null) {
+                val urls = intent.getStringArrayListExtra(EXTRA_URLS)
+                val titles = intent.getStringArrayListExtra(EXTRA_TITLES)
+                if (urls.isNullOrEmpty() || titles == null || titles.size != urls.size) {
                     stopSelf()
                     return START_NOT_STICKY
                 }
-                startForegroundWithNotification("Preparing download", title)
-                scope.launch { runDownload(url, title) }
+                val downloads = urls.indices.map { DictionaryDownload(urls[it], titles[it]) }
+                startForegroundWithNotification("Preparing download", downloads.first().title)
+                scope.launch { runDownloads(downloads) }
             }
             else -> stopSelf()
         }
@@ -79,7 +81,7 @@ class ImportService : Service() {
             val total = displaySize(uri)
             controller.update(ImportState.Copying(name, 0, total))
             cachedFile = copyToCache(uri, name, total)
-            importArchive(cachedFile, name)
+            controller.update(ImportState.Done(importArchive(cachedFile, name)))
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: ImportCancelledException) {
@@ -93,46 +95,67 @@ class ImportService : Service() {
     }
 
     /**
-     * One tap from onboarding: fetch the publisher's archive, then import it with the
-     * same foreground session and progress as a picked file.
+     * One tap from the catalogue: fetch each publisher archive in turn and import it
+     * with the same foreground session and progress as a picked file. A single
+     * dictionary is just a queue of one; a starter set keeps its progress across items.
      */
-    private suspend fun runDownload(url: String, title: String) {
+    private suspend fun runDownloads(downloads: List<DictionaryDownload>) {
         val controller = container.importController
         controller.reset()
-        var downloaded: File? = null
+        var current: DictionaryDownload? = null
+        var last: ImportSummary? = null
         try {
-            val directory = File(cacheDir, "downloads").apply { mkdirs() }
-            val target = File(directory, "${System.currentTimeMillis()}-${title.replace(' ', '-')}.zip")
-            notify("Downloading $title", "Starting")
-            var notifiedStep = -1L
-            downloaded = DictionaryDownloader.download(
-                url = url,
-                target = target,
-                onProgress = { bytes, total ->
-                    controller.update(ImportState.Downloading(title, bytes, total))
-                    // The system rate-limits notifications; one per 2 MB is plenty.
-                    val step = bytes / (2L * 1024 * 1024)
-                    if (step != notifiedStep) {
-                        notifiedStep = step
-                        notify("Downloading $title", "${bytes / 1024 / 1024} MB")
-                    }
-                },
-                shouldContinue = { !controller.cancelRequested },
-            )
-            importArchive(downloaded, title)
+            for ((index, download) in downloads.withIndex()) {
+                current = download
+                val label = if (downloads.size == 1) {
+                    download.title
+                } else {
+                    "${download.title} (${index + 1} of ${downloads.size})"
+                }
+                last = downloadAndImport(download, label)
+            }
+            last?.let { controller.update(ImportState.Done(it, count = downloads.size)) }
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: ImportCancelledException) {
             controller.update(ImportState.Cancelled)
         } catch (error: Exception) {
-            fail(error, "The dictionary could not be downloaded")
+            val title = current?.let { "${it.title}: " }.orEmpty()
+            fail(error, "${title}The dictionary could not be downloaded")
         } finally {
-            downloaded?.delete()
             finishSession()
         }
     }
 
-    private suspend fun importArchive(archive: File, name: String) {
+    private suspend fun downloadAndImport(download: DictionaryDownload, label: String): ImportSummary {
+        val controller = container.importController
+        val directory = File(cacheDir, "downloads").apply { mkdirs() }
+        val target = File(directory, "${System.currentTimeMillis()}-${download.title.replace(' ', '-')}.zip")
+        var downloaded: File? = null
+        try {
+            notify("Downloading $label", "Starting")
+            var notifiedStep = -1L
+            downloaded = DictionaryDownloader.download(
+                url = download.url,
+                target = target,
+                onProgress = { bytes, total ->
+                    controller.update(ImportState.Downloading(label, bytes, total))
+                    // The system rate-limits notifications; one per 2 MB is plenty.
+                    val step = bytes / (2L * 1024 * 1024)
+                    if (step != notifiedStep) {
+                        notifiedStep = step
+                        notify("Downloading $label", "${bytes / 1024 / 1024} MB")
+                    }
+                },
+                shouldContinue = { !controller.cancelRequested },
+            )
+            return importArchive(downloaded, label)
+        } finally {
+            downloaded?.delete()
+        }
+    }
+
+    private suspend fun importArchive(archive: File, name: String): ImportSummary {
         val controller = container.importController
         notify("Importing $name", "Reading archive")
         val summary = container.repository.import(
@@ -143,9 +166,9 @@ class ImportService : Service() {
             },
             shouldContinue = { !controller.cancelRequested },
         )
-        controller.update(ImportState.Done(summary))
         container.refreshDictionaries()
         notify("Import complete", summary.title)
+        return summary
     }
 
     private fun fail(error: Exception, fallback: String) {
@@ -273,8 +296,8 @@ class ImportService : Service() {
         private const val ACTION_DOWNLOAD = "com.elianiva.jisholens.action.DOWNLOAD_DICTIONARY"
         private const val ACTION_CANCEL = "com.elianiva.jisholens.action.CANCEL_IMPORT"
         private const val EXTRA_URI = "uri"
-        private const val EXTRA_URL = "url"
-        private const val EXTRA_TITLE = "title"
+        private const val EXTRA_URLS = "urls"
+        private const val EXTRA_TITLES = "titles"
 
         fun start(context: Context, uri: Uri) {
             val intent = Intent(context, ImportService::class.java)
@@ -283,12 +306,13 @@ class ImportService : Service() {
             ContextCompat.startForegroundService(context, intent)
         }
 
-        /** Downloads [url] and imports it in the same foreground session. */
-        fun download(context: Context, url: String, title: String) {
+        /** Downloads each archive and imports it in the same foreground session, in order. */
+        fun download(context: Context, downloads: List<DictionaryDownload>) {
+            if (downloads.isEmpty()) return
             val intent = Intent(context, ImportService::class.java)
                 .setAction(ACTION_DOWNLOAD)
-                .putExtra(EXTRA_URL, url)
-                .putExtra(EXTRA_TITLE, title)
+                .putStringArrayListExtra(EXTRA_URLS, ArrayList(downloads.map { it.url }))
+                .putStringArrayListExtra(EXTRA_TITLES, ArrayList(downloads.map { it.title }))
             ContextCompat.startForegroundService(context, intent)
         }
     }

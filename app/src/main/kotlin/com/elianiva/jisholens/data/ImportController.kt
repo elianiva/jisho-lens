@@ -10,7 +10,7 @@ sealed interface ImportState {
     data class Copying(val name: String, val bytes: Long, val total: Long?) : ImportState
     data class Downloading(val name: String, val bytes: Long, val total: Long?) : ImportState
     data class Importing(val title: String, val message: String) : ImportState
-    data class Done(val summary: ImportSummary) : ImportState
+    data class Done(val summary: ImportSummary, val count: Int = 1) : ImportState
     data class Failed(val message: String) : ImportState
     data object Cancelled : ImportState
 }

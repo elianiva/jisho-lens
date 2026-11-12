@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -26,9 +27,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.elianiva.jisholens.data.AppContainer
+import com.elianiva.jisholens.data.DictionaryCatalog
 import com.elianiva.jisholens.data.DictionarySource
 import com.elianiva.jisholens.data.ImportState
 import com.elianiva.jisholens.ui.components.DictionarySourceList
+import com.elianiva.jisholens.ui.components.DictionaryStarterCard
 import com.elianiva.jisholens.ui.components.ImportProgressCard
 import com.elianiva.jisholens.ui.components.ShapeBadge
 import com.elianiva.jisholens.ui.components.rememberDictionaryDownloader
@@ -50,8 +53,13 @@ fun OnboardingScreen(
     val importFile = rememberDictionaryImporter()
     val download = rememberDictionaryDownloader()
 
-    LaunchedEffect(dictionaries) {
-        if (dictionaries.isNotEmpty()) {
+    LaunchedEffect(dictionaries, importState) {
+        // Wait until an import session settles, so a starter set does not leave the
+        // screen after its first dictionary while three more are still arriving.
+        val settled = importState is ImportState.Done ||
+            importState is ImportState.Cancelled ||
+            importState is ImportState.Idle
+        if (dictionaries.isNotEmpty() && settled) {
             container.settings.setOnboardingComplete(true)
             withContext(Dispatchers.Main.immediate) { onDone() }
         }
@@ -73,16 +81,16 @@ fun OnboardingScreen(
 }
 
 /**
- * First run. A new reader needs one thing: a dictionary. Downloading one is the
- * shortest path, so the catalogue is on this screen with the size and the licence,
- * and importing a file is the secondary action.
+ * First run. A new reader needs a working set: definitions, kanji, frequency, and pitch.
+ * The starter card queues all four in one tap, and the grouped catalogue below it shows
+ * every entry, its licence, and whether the app may fetch it or the reader must.
  */
 @Composable
 fun OnboardingContent(
     onImport: () -> Unit,
     onSkip: () -> Unit,
     importState: ImportState = ImportState.Idle,
-    onDownload: (DictionarySource) -> Unit = {},
+    onDownload: (List<DictionarySource>) -> Unit = {},
     onOpenPage: (DictionarySource) -> Unit = {},
     onCancelImport: () -> Unit = {},
 ) {
@@ -97,8 +105,14 @@ fun OnboardingContent(
                 .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TextButton(onClick = onSkip) { Text("Skip") }
+            }
             Column(
-                modifier = Modifier.padding(vertical = 24.dp),
+                modifier = Modifier.padding(bottom = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
@@ -128,11 +142,6 @@ fun OnboardingContent(
                     textAlign = TextAlign.Center,
                 )
             }
-            Text(
-                text = "Start with a dictionary",
-                modifier = Modifier.fillMaxWidth().padding(start = 4.dp, bottom = 8.dp),
-                style = MaterialTheme.typography.titleMediumEmphasized,
-            )
             if (busy) {
                 ImportProgressCard(
                     state = importState,
@@ -140,13 +149,16 @@ fun OnboardingContent(
                     modifier = Modifier.fillMaxWidth(),
                 )
             } else {
+                DictionaryStarterCard(onDownload = { onDownload(DictionaryCatalog.starterSet) })
+                TextButton(onClick = onImport, modifier = Modifier.padding(top = 4.dp)) {
+                    Text("Import a downloaded file")
+                }
+                Text(
+                    text = "Or choose your own",
+                    modifier = Modifier.fillMaxWidth().padding(start = 4.dp, top = 12.dp, bottom = 8.dp),
+                    style = MaterialTheme.typography.titleMediumEmphasized,
+                )
                 DictionarySourceList(onDownload = onDownload, onOpenPage = onOpenPage)
-            }
-            TextButton(onClick = onImport, modifier = Modifier.padding(top = 4.dp)) {
-                Text("Import a downloaded file")
-            }
-            TextButton(onClick = onSkip, modifier = Modifier.padding(bottom = 8.dp)) {
-                Text("Skip for now")
             }
         }
     }

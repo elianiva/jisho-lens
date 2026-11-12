@@ -8,6 +8,9 @@ import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 
+/** One publisher archive to fetch and import, with the title the reader sees. */
+data class DictionaryDownload(val url: String, val title: String)
+
 /**
  * Fetches one dictionary archive into [target] and reports progress.
  *

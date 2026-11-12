@@ -18,7 +18,9 @@ All notable changes to this project will be documented in this file. See [standa
 * rank scan candidates and their entries by imported frequency data
 * mark words as known, dim them in reader mode, and show how much of the page is known
 * mine a word into an Anki note through AnkiDroid's `ACTION_SEND` contract, with the sentence, the pitch, and a share-sheet fallback
-* download Jitendex or JMdict on first run, with size and licence shown, and import it in one tap
+* browse a Yomitan dictionary catalogue grouped into terms, kanji, frequency, pitch, and names or specialised entries, each with its licence and terms
+* download a four-entry starter set (Jitendex, KANJIDIC, Jiten, Wadoku pitch) or any entry whose publisher allows it in one tap, and point the rest at the publisher page for a manual import
+* label imported dictionary rows with the kind of data they provide
 
 ### Bug Fixes
 
@@ -28,7 +30,7 @@ All notable changes to this project will be documented in this file. See [standa
 
 * Material 3 is pinned to 1.5.0-alpha18, the last 1.5 build that works with Compose 1.11, compileSdk 36 and AGP 8.13. Later builds need compileSdk 37 and AGP 9.1
 * the screen lens keeps one frame in memory and never writes it to disk; closing the reader stops the capture session, and the window is `FLAG_SECURE`
-* Jitendex and JMdict in Yomitan format ship no `term_meta` banks, so the pitch contour and the frequency ranking show up with dictionaries that provide them
+* Jitendex and JMdict in Yomitan format ship no `term_meta` banks, so the pitch contour and the frequency ranking show up with the frequency and pitch dictionaries from the catalogue
 * the Anki action uses AnkiDroid's documented `ACTION_SEND` contract, because its Instant-Add library is LGPL-3.0 and this app is MIT
 * the 1.x app and its `jmdict.db` database are not compatible with the native app
 

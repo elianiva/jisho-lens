@@ -90,9 +90,13 @@ fun OnboardingDownloading() = Frame(false) {
     OnboardingContent(
         onImport = {},
         onSkip = {},
-        importState = ImportState.Downloading("Jitendex", 12L * 1024 * 1024, 38L * 1024 * 1024),
+        importState = ImportState.Downloading("Jitendex (1 of 4)", 12L * 1024 * 1024, 38L * 1024 * 1024),
     )
 }
+
+@Preview(name = "Catalogue", widthDp = W, heightDp = 3400)
+@Composable
+fun Catalogue() = Dictionaries(false, ImportState.Idle, emptyList())
 
 @Preview(name = "Search recents", widthDp = W, heightDp = H)
 @Composable

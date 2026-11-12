@@ -27,10 +27,10 @@ class AppScreenshotTest {
 
     @Test
     fun firstRun() {
-        waitFor("Start with a dictionary")
+        waitFor("Start with a dictionary. Everything stays on this device.")
         compose.onRoot().captureRoboImage("build/screenshots/app/1-first-run.png")
 
-        compose.onNodeWithText("Skip for now").performClick()
+        compose.onNodeWithText("Skip").performClick()
         waitFor("Add a dictionary first")
         compose.onRoot().captureRoboImage("build/screenshots/app/2-lookup.png")
 
@@ -56,11 +56,11 @@ class WideAppScreenshotTest {
     fun rail() {
         // Earlier tests in this JVM may already have finished onboarding, so skip it only if shown.
         compose.waitUntil(10_000) {
-            compose.onAllNodesWithText("Skip for now").fetchSemanticsNodes().isNotEmpty() ||
+            compose.onAllNodesWithText("Skip").fetchSemanticsNodes().isNotEmpty() ||
                 compose.onAllNodesWithText("Add a dictionary first").fetchSemanticsNodes().isNotEmpty()
         }
-        if (compose.onAllNodesWithText("Skip for now").fetchSemanticsNodes().isNotEmpty()) {
-            compose.onNodeWithText("Skip for now").performClick()
+        if (compose.onAllNodesWithText("Skip").fetchSemanticsNodes().isNotEmpty()) {
+            compose.onNodeWithText("Skip").performClick()
         }
         compose.waitUntil(10_000) {
             compose.onAllNodesWithText("Add a dictionary first").fetchSemanticsNodes().isNotEmpty()

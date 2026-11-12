@@ -17,6 +17,11 @@ class TermMetaParserTest {
     }
 
     @Test
+    fun `reads the BCCWJ frequency key`() {
+        assertEquals(1.0, TermMetaParser.frequency("""{"reading":"の","frequency":1}"""))
+    }
+
+    @Test
     fun `reads numeric string`() {
         assertEquals(3.0, TermMetaParser.frequency("\"3\""))
     }
