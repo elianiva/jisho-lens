@@ -25,6 +25,10 @@ All notable changes to this project will be documented in this file. See [standa
 ### Bug Fixes
 
 * restore the original Jisho Lens launcher icon as an adaptive icon, with a monochrome layer for themed icons
+* segment with Kuromoji instead of one greedy longest match, so words inside a phrase, script changes, okurigana, compounds, and words that only appear conjugated stay searchable
+* offer every overlapping word at a tap, including the conjugated phrase and the shorter headwords inside it
+* read Jitendex part-of-speech codes from the glossary, so suru nouns and na-adjectives deinflect on an already imported database
+* answer a surface longer than any headword with the entries of the words inside it
 
 ### Notes
 

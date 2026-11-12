@@ -22,6 +22,7 @@ The native app does not read the 1.x database. Import a Yomitan `.zip` dictionar
 - Scan from the camera or the photo picker.
 - Read the screen you are looking at live: turn on Live reading once, tap the Screen lens tile in any app, and Japanese words highlight in place. Tap a word for its entry. The results sheet slides up and the page stays visible. A vertical swipe scrolls the app through its accessibility scroll action.
 - Tap a recognized line, then a dictionary word, to open its entry.
+- Segment with Kuromoji and IPADIC, so a conjugated phrase, a compound, a katakana loanword, or a keigo phrase resolves to the entry a reader wants. A tap offers the overlapping words at that character, not only the longest one.
 - Search Japanese words, kanji, kana, and English glosses.
 - Deinflect conjugated input, so 食べさせられた finds 食べる.
 - Import several Yomitan dictionaries, enable them, reorder them, and remove them.
@@ -40,6 +41,7 @@ The native app does not read the 1.x database. Import a Yomitan `.zip` dictionar
 ## Limitations
 
 - The native app is a preview. It has no signed stable release yet.
+- Segmentation loads the IPADIC model once per process (about 36 MB of heap) and adds about 13 MB to the APK.
 - Vertical manga text and stylized fonts are harder for ML Kit. Crop and zoom the image when recognition is poor.
 - Live reading uses Android's `AccessibilityService`. It only sees text an app exposes in its accessibility tree. Manga, images, and custom-drawn text use an in-memory screenshot and ML Kit on Android 11 and later, and a protected window refuses the screenshot. While the lens is open it takes touches. Swipe to scroll the app, or close the lens to interact with the page.
 - Google Play requires a Permissions Declaration for the `AccessibilityService` API. The app declares `isAccessibilityTool=false` because it is a language-learning aid, not a screen reader for people with disabilities, and shows the disclosure before the system grant. A Play release needs that declaration.
@@ -62,6 +64,7 @@ The disclosure is in `app/src/main/kotlin/com/elianiva/jisholens/ui/screens/Lens
 - `androidx.sqlite` bundled SQLite behind the `:dictionary` interface
 - FTS4 with `unicode61` for search
 - AccessibilityService with a `TYPE_ACCESSIBILITY_OVERLAY` Compose window, and ML Kit Japanese text recognition for images
+- Kuromoji 0.9.0 with the IPADIC model for segmentation (Apache-2.0)
 - Gradle 8.14.7 and AGP 8.13.2
 
 ## Build

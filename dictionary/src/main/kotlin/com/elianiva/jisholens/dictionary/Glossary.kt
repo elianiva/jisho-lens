@@ -1,6 +1,10 @@
 package com.elianiva.jisholens.dictionary
 
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 
 /**
  * Turns Yomitan glossary and meaning JSON into readable text in one pass.
@@ -15,6 +19,37 @@ object Glossary {
     private val blockTags = setOf("li", "div", "p", "tr", "td", "th", "summary", "br")
 
     fun text(glossary: JsonElement): String = text(glossary.toString())
+
+    /**
+     * The part-of-speech codes that Jitendex puts in its structured content,
+     * such as `n`, `vs`, `vt`, or `adj-na`.
+     *
+     * JMdict writes those codes into the term's `rules` and `definitionTags`
+     * columns, but Jitendex leaves both empty and keeps the tags in the
+     * glossary instead. Reading them from the tree makes deinflection work on an
+     * already imported Jitendex database.
+     */
+    fun partOfSpeechTags(glossary: JsonElement): Set<String> {
+        val tags = HashSet<String>()
+        collectPartOfSpeechTags(glossary, tags)
+        return tags
+    }
+
+    private fun collectPartOfSpeechTags(element: JsonElement, tags: MutableSet<String>) {
+        when (element) {
+            is JsonArray -> element.forEach { collectPartOfSpeechTags(it, tags) }
+            is JsonObject -> {
+                val data = element["data"] as? JsonObject
+                if (data != null &&
+                    (data["content"] as? JsonPrimitive)?.contentOrNull == "part-of-speech-info"
+                ) {
+                    (data["code"] as? JsonPrimitive)?.contentOrNull?.let(tags::add)
+                }
+                element.values.forEach { collectPartOfSpeechTags(it, tags) }
+            }
+            else -> Unit
+        }
+    }
 
     fun text(json: CharSequence, start: Int = 0, end: Int = json.length): String {
         val builder = StringBuilder(64)

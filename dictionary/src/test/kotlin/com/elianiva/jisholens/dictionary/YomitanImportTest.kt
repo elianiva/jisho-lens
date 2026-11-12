@@ -300,11 +300,11 @@ class YomitanImportTest {
             assertEquals(5, later.single().start)
             assertEquals(7, later.single().end)
 
-            // The conjugated surface is offered after the prefix that is a headword,
-            // and it carries the dictionary form and the rule chain.
+            // The whole conjugated phrase leads, because that is the word the
+            // reader tapped; the shorter headword stays as an alternative.
             val conjugated = lookup.scanAt("食べさせられた", 0)
-            assertEquals(listOf("食べ", "食べさせられた"), conjugated.map { it.surface })
-            val verb = conjugated.last().results.single()
+            assertEquals(listOf("食べさせられた", "食べ"), conjugated.map { it.surface })
+            val verb = conjugated.first().results.single()
             assertEquals("食べる", verb.expression)
             assertEquals("食べさせられた", verb.deinflection?.originalText)
             assertTrue(verb.deinflection!!.reasons.isNotEmpty())

@@ -34,8 +34,8 @@ class DictionaryRepository(private val database: DictionaryDatabase) {
         val matches = lookup.scan(text)
         val entriesById = entries(matches.flatMap { it.results })
             .associateBy { it.termId }
-        // The segmentation stays greedy; the entries of each word are ranked by
-        // frequency so the chip and its card lead with the common word.
+        // The segmenter decides the words; the entries of each word are ranked
+        // by frequency so the chip and its card lead with the common word.
         matches.map { match -> match.toScanWord(entriesById) }
             .map { word -> word.copy(entries = rankEntries(word.entries)) }
     }
@@ -151,5 +151,6 @@ class DictionaryRepository(private val database: DictionaryDatabase) {
         end = end,
         entries = results.mapNotNull { entriesById[it.termId] },
         exact = exact,
+        priority = priority,
     )
 }

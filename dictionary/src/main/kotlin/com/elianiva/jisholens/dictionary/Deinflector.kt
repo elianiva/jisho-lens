@@ -291,14 +291,12 @@ internal object DeinflectionTags {
         "v4r" to setOf("v4r", "v5r", "v5r-i", "v5aru"),
     )
 
-    fun matches(termRules: String, definitionTags: String, tags: List<String>): Boolean {
+    /** True when [tag] names a part of speech this matcher understands. */
+    fun isPartOfSpeechTag(tag: String): Boolean = tag in classes || tag in stems
+
+    fun matches(partsOfSpeech: Set<String>, tags: List<String>): Boolean {
         val last = tags.lastOrNull { it in classes || it in stems } ?: return true
-        val rules = buildSet {
-            addAll(termRules.split(' '))
-            // JMdict stores many suru nouns as nouns with an empty rules
-            // column; their verb class is only in definitionTags.
-            addAll(definitionTags.split(' '))
-        }.filter { it.isNotEmpty() }
+        val rules = partsOfSpeech.filter { it.isNotEmpty() }.toSet()
         if (rules.isEmpty()) return false
 
         if (last in stems) {

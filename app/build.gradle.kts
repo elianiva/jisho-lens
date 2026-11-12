@@ -100,6 +100,9 @@ android {
             "/META-INF/{AL2.0,LGPL2.1}",
             "/META-INF/LICENSE*",
             "/META-INF/NOTICE*",
+            // Kuromoji and its IPADIC model both ship these; the attribution
+            // lives in THIRD_PARTY_NOTICES.md.
+            "/META-INF/CONTRIBUTORS.md",
         )
     }
 

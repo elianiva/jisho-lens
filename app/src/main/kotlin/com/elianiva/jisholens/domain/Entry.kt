@@ -31,6 +31,8 @@ data class ScanWord(
     val entries: List<Entry>,
     /** True when the surface itself is a headword, not a conjugated form. */
     val exact: Boolean = true,
+    /** Order of the tap candidate list; lower is a better answer for the tap. */
+    val priority: Int = 0,
 ) {
     /** The best frequency rank among the entries; lower is more common. */
     val bestFrequency: Double? get() = entries.mapNotNull { it.frequency }.minOrNull()

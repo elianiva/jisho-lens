@@ -26,12 +26,14 @@ class CandidateRankingTest {
         frequency: Double?,
         exact: Boolean = true,
         score: Double = 0.0,
+        priority: Int = 0,
     ) = ScanWord(
         surface = surface,
         start = 0,
         end = surface.length,
         entries = listOf(entry(surface.hashCode().toLong(), frequency, score)),
         exact = exact,
+        priority = priority,
     )
 
     @Test
@@ -47,15 +49,15 @@ class CandidateRankingTest {
     }
 
     @Test
-    fun `an exact headword beats a more common conjugated form`() {
+    fun `the tap priority beats a more common form`() {
         val ranked = rankCandidates(
             listOf(
-                word("食べさせられた", frequency = 10.0, exact = false),
-                word("食べ", frequency = 9000.0),
-                word("食べる", frequency = 50.0),
+                word("食べさせられた", frequency = 10.0, exact = false, priority = 0),
+                word("食べ", frequency = 9000.0, priority = 1),
+                word("食べる", frequency = 50.0, priority = 2),
             ),
         )
-        assertEquals(listOf("食べる", "食べ", "食べさせられた"), ranked.map { it.surface })
+        assertEquals(listOf("食べさせられた", "食べ", "食べる"), ranked.map { it.surface })
     }
 
     @Test
