@@ -11,8 +11,10 @@ import com.elianiva.jisholens.dictionary.YomitanArchive
 import com.elianiva.jisholens.dictionary.YomitanImporter
 import com.elianiva.jisholens.domain.Entry
 import com.elianiva.jisholens.domain.EntryTag
+import com.elianiva.jisholens.domain.KanjiDetail
 import com.elianiva.jisholens.domain.PitchAccent
 import com.elianiva.jisholens.domain.ScanWord
+import com.elianiva.jisholens.domain.toDetail
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -29,6 +31,24 @@ class DictionaryRepository(private val database: DictionaryDatabase) {
     suspend fun lookup(text: String): List<Entry> = onDb { entries(lookup.lookup(text.trim())) }
 
     suspend fun search(text: String): List<Entry> = onDb { entries(lookup.search(text.trim())) }
+
+    /** The kanji rows for [character], with the tag notes this database knows. */
+    suspend fun kanji(character: String): List<KanjiDetail> = onDb {
+        val notes = store.tags().associate { it.name to it.notes }
+        lookup.kanji(character.trim()).map { it.toDetail(notes) }
+    }
+
+    /** A short list of words whose expression contains [character], most common first. */
+    suspend fun kanjiWords(character: String, limit: Int = 8): List<Entry> = onDb {
+        if (limit <= 0) return@onDb emptyList()
+        entries(lookup.termsContaining(character.trim(), limit = 40))
+            .sortedWith(
+                compareBy<Entry> { it.frequency == null }
+                    .thenBy { it.frequency ?: Double.MAX_VALUE }
+                    .thenBy { it.expression.length },
+            )
+            .take(limit)
+    }
 
     suspend fun scan(text: String): List<ScanWord> = onDb {
         val matches = lookup.scan(text)
