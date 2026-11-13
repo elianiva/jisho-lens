@@ -21,10 +21,15 @@ The native app does not read the 1.x database. Import a Yomitan `.zip` dictionar
 
 - Scan from the camera or the photo picker.
 - Read the screen you are looking at live: turn on Live reading once, tap the Screen lens tile in any app, and Japanese words highlight in place. Tap a word for its entry. The results sheet slides up and the page stays visible. A vertical swipe scrolls the app through its accessibility scroll action.
+- Turn on study mode in the lens to draw furigana over every word, tint the words you do not know, leave known words quiet, and show how much of the page you already know.
 - Tap a recognized line, then a dictionary word, to open its entry.
+- Open a `.txt`, `.srt`, or `.vtt` file from the system file picker and read it as lines you can tap. A tap offers the same candidates and entry sheet as the lens.
 - Segment with Kuromoji and IPADIC, so a conjugated phrase, a compound, a katakana loanword, or a keigo phrase resolves to the entry a reader wants. A tap offers the overlapping words at that character, not only the longest one.
 - Search Japanese words, kanji, kana, and English glosses.
-- Deinflect conjugated input, so 食べさせられた finds 食べる.
+- Deinflect conjugated input, so 食べさせられた finds 食べる. The entry names the chain of rules in plain English and the meaning they produce, such as "was made to eat".
+- Tap a kanji in an entry headword to open its readings, meanings, grade, JLPT level, frequency, stroke count, radical, and a short list of dictionary words that use it.
+- Save a note or mnemonic on a headword. Notes stay on the device.
+- Hear a headword, or the selected sentence in the lens, with the device's Japanese text-to-speech voice. The control hides when the device has no offline Japanese voice.
 - Import several Yomitan dictionaries, enable them, reorder them, and remove them.
 - Show tags, glosses, cross references, images, frequency data, and the pitch accent contour from the dictionary's `pitch` metadata.
 - Rank scanned words and their entries by the imported frequency data, so the common word comes first.
@@ -56,7 +61,9 @@ A component is a part of the app that lives outside the APK. Each one has a kind
 - Live reading uses Android's `AccessibilityService`. It only sees text an app exposes in its accessibility tree. Manga, images, and custom-drawn text use an in-memory screenshot and ML Kit on Android 11 and later, and a protected window refuses the screenshot. While the lens is open it takes touches. Swipe to scroll the app, or close the lens to interact with the page.
 - Google Play requires a Permissions Declaration for the `AccessibilityService` API. The app declares `isAccessibilityTool=false` because it is a language-learning aid, not a screen reader for people with disabilities, and shows the disclosure before the system grant. A Play release needs that declaration.
 - The Anki action uses AnkiDroid's `ACTION_SEND` contract, not its LGPL-3.0 library, so the note is opened in AnkiDroid for you to confirm instead of being written silently. Without AnkiDroid the note goes to the system share sheet.
-- History, bookmarks, and a kanji screen are not part of this version.
+- History and bookmarks are not part of this version.
+- The reader opens plain text and SubRip or WebVTT subtitles. EPUB is a follow-up.
+- Text to speech uses the Japanese voice installed on the device. Without an offline Japanese voice the speak controls are hidden.
 - The app ships no dictionary and mirrors none. Every catalogue entry points at its publisher, records its licence and terms, and only offers a one-tap download where those terms allow the app to fetch the file. JPDB and BCCWJ must be downloaded and imported by hand.
 
 ### Live reading and Google Play
@@ -70,10 +77,11 @@ The disclosure is in `app/src/main/kotlin/com/elianiva/jisholens/ui/screens/Lens
 - Kotlin 2.4 and Jetpack Compose with Material 3 Expressive (`material3` 1.5.0-rc01)
 - ViewModel and StateFlow for screen state
 - Navigation Compose with type-safe routes
-- DataStore for settings
+- DataStore for settings and per-word notes
 - `androidx.sqlite` bundled SQLite behind the `:dictionary` interface
 - FTS4 with `unicode61` for search
 - AccessibilityService with a `TYPE_ACCESSIBILITY_OVERLAY` Compose window, and ML Kit Japanese text recognition for images, with the model installed by Google Play services
+- Android `TextToSpeech`, using the installed offline Japanese voice
 - Kuromoji 0.9.0 with the IPADIC model for segmentation (Apache-2.0)
 - Gradle 9.9.1 and AGP 9.5.1
 
@@ -156,7 +164,7 @@ The database mirrors Yomitan's object stores: `dictionaries`, `terms`, `term_met
 2. Download a Yomitan dictionary archive such as Jitendex or JMdict.
 3. Open Settings, then Dictionaries, then the add button.
 4. Pick the `.zip` file. The import runs in a foreground service and can be cancelled.
-5. Scan a picture or search for a word.
+5. Scan a picture, search for a word, or open a text file in Read.
 
 The 1.x release and its `jmdict.db` file are not compatible with the native app.
 

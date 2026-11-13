@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file. See [standa
 * import Yomitan dictionaries, with tags, media, frequency data, and deinflected lookup
 * add search, scan, dictionary management, sharing, and process-text lookup
 * redesign the app on Material 3 Expressive: spring motion, shape morphing, emphasized type, flexible app bars, segmented lists and a loading indicator that waits 200 ms
-* open on Look up, with Scan and Settings beside it; the navigation bar becomes a rail from 840 dp
+* open on Look up, with Scan, Read, and Settings beside it; the navigation bar becomes a rail from 840 dp
 * add recent searches, search as you type, and a wallpaper-colors switch
 * use `com.elianiva` as the stable application ID and `com.elianiva.preview` for previews
 * read the screen live from a Quick Settings tile with one accessibility grant: Japanese text highlights in place, a results sheet slides up, a vertical swipe scrolls the app, and ML Kit OCR reads images through an accessibility screenshot
@@ -21,6 +21,12 @@ All notable changes to this project will be documented in this file. See [standa
 * browse a Yomitan dictionary catalogue grouped into terms, kanji, frequency, pitch, and names or specialised entries, each with its licence and terms
 * download a four-entry starter set (Jitendex, KANJIDIC, Jiten, Wadoku pitch) or any entry whose publisher allows it in one tap, and point the rest at the publisher page for a manual import
 * label imported dictionary rows with the kind of data they provide
+* open a kanji detail screen from any entry headword, with KANJIDIC readings, meanings, grade, JLPT level, frequency, stroke count, radical, and the words that use it
+* turn a deinflected entry into a plain-English chain of rules and the phrase it produces, such as "was made to eat"
+* save a note or mnemonic on a headword, stored on the device
+* speak a headword, or the selected lens sentence, with the device's Japanese text-to-speech voice
+* show furigana over every word in the live lens, tint unknown words, and show page coverage
+* read `.txt`, `.srt`, and `.vtt` files from the system file picker as tappable lines with the same candidates and entry sheet as the lens
 
 ### Bug Fixes
 
@@ -39,6 +45,9 @@ All notable changes to this project will be documented in this file. See [standa
 * Jitendex and JMdict in Yomitan format ship no `term_meta` banks, so the pitch contour and the frequency ranking show up with the frequency and pitch dictionaries from the catalogue
 * the Anki action uses AnkiDroid's documented `ACTION_SEND` contract, because its Instant-Add library is LGPL-3.0 and this app is MIT
 * the 1.x app and its `jmdict.db` database are not compatible with the native app
+* notes and speech stay on the device. A device without an offline Japanese voice shows no speak control
+* the reader opens plain text, SubRip, and WebVTT only. EPUB is a follow-up
+* the file reader uses the system file picker and speech uses the installed engine, so these additions need no new permission
 
 ## 1.1.0 (2023-10-08)
 
