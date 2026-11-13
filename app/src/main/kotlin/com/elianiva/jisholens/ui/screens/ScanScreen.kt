@@ -67,6 +67,7 @@ import com.elianiva.jisholens.data.AppContainer
 import com.elianiva.jisholens.ui.components.EntryCard
 import com.elianiva.jisholens.ui.components.fitOrigin
 import com.elianiva.jisholens.ui.components.fitScale
+import com.elianiva.jisholens.ui.components.rememberTextSpeaker
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -75,17 +76,20 @@ fun ScanScreen(
     container: AppContainer,
     imagePath: String,
     onBack: () -> Unit,
+    onOpenKanji: ((Char) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val viewModel: ScanViewModel = viewModel(
         key = imagePath,
         factory = viewModelFactory {
             initializer {
-                ScanViewModel(context.applicationContext, container.repository, container.ocr, imagePath)
+                ScanViewModel(context.applicationContext, container.repository, container.notes, container.ocr, imagePath)
             }
         },
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val notes by viewModel.savedNotes.collectAsStateWithLifecycle()
+    val speaker = rememberTextSpeaker()
     ScanContent(
         state = state,
         loadMedia = container.repository::media,
@@ -93,6 +97,10 @@ fun ScanScreen(
         onSelectWord = viewModel::selectWord,
         onQuery = viewModel::searchLink,
         onBack = onBack,
+        notes = notes,
+        onSaveNote = viewModel::saveNote,
+        onOpenKanji = onOpenKanji,
+        onSpeak = speaker?.let { voice -> { word: String -> voice.speak(word) } },
     )
 }
 
@@ -107,6 +115,10 @@ fun ScanContent(
     onQuery: (String) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    notes: Map<String, String> = emptyMap(),
+    onSaveNote: ((String, String) -> Unit)? = null,
+    onOpenKanji: ((Char) -> Unit)? = null,
+    onSpeak: ((String) -> Unit)? = null,
 ) {
     val scaffoldState = rememberBottomSheetScaffoldState()
     val scope = rememberCoroutineScope()
@@ -145,6 +157,10 @@ fun ScanContent(
                 loadMedia = loadMedia,
                 onSelectWord = onSelectWord,
                 onQuery = onQuery,
+                notes = notes,
+                onSaveNote = onSaveNote,
+                onOpenKanji = onOpenKanji,
+                onSpeak = onSpeak,
             )
         },
     ) { padding ->
@@ -239,6 +255,10 @@ private fun ScanSheet(
     loadMedia: suspend (Long, String) -> ByteArray?,
     onSelectWord: (Int) -> Unit,
     onQuery: (String) -> Unit,
+    notes: Map<String, String>,
+    onSaveNote: ((String, String) -> Unit)?,
+    onOpenKanji: ((Char) -> Unit)?,
+    onSpeak: ((String) -> Unit)?,
 ) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
         if (state.words.isEmpty()) {
@@ -272,6 +292,10 @@ private fun ScanSheet(
                         entry = entry,
                         loadMedia = loadMedia,
                         onQuery = onQuery,
+                        onKanji = onOpenKanji,
+                        note = notes[entry.expression].orEmpty(),
+                        onSaveNote = onSaveNote?.let { save -> { value -> save(entry.expression, value) } },
+                        onSpeak = onSpeak?.let { speak -> { speak(entry.expression) } },
                     )
                 }
             }

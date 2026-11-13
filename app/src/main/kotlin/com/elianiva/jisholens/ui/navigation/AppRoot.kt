@@ -17,9 +17,11 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CameraAlt
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.rounded.CameraAlt
+import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Icon
@@ -57,7 +59,9 @@ import androidx.navigation.toRoute
 import com.elianiva.jisholens.data.AppContainer
 import com.elianiva.jisholens.ui.components.ComponentDownloadPill
 import com.elianiva.jisholens.ui.screens.DictionariesScreen
+import com.elianiva.jisholens.ui.screens.KanjiScreen
 import com.elianiva.jisholens.ui.screens.OnboardingScreen
+import com.elianiva.jisholens.ui.screens.ReaderScreen
 import com.elianiva.jisholens.ui.screens.ScanHomeScreen
 import com.elianiva.jisholens.ui.screens.ScanScreen
 import com.elianiva.jisholens.ui.screens.SearchScreen
@@ -71,8 +75,9 @@ enum class TopLevel(
     val selectedIcon: ImageVector,
     val route: Any,
 ) {
-    Lookup("Look up", Icons.Outlined.Search, Icons.Rounded.Search, SearchRoute),
+    Lookup("Look up", Icons.Outlined.Search, Icons.Rounded.Search, SearchRoute()),
     Scan("Scan", Icons.Outlined.CameraAlt, Icons.Rounded.CameraAlt, ScanHomeRoute),
+    Read("Read", Icons.AutoMirrored.Outlined.MenuBook, Icons.AutoMirrored.Rounded.MenuBook, ReaderRoute),
     Settings("Settings", Icons.Outlined.Settings, Icons.Rounded.Settings, SettingsRoute),
 }
 
@@ -80,6 +85,7 @@ private fun NavDestination?.topLevel(): TopLevel? = when {
     this == null -> null
     hasRoute<SearchRoute>() -> TopLevel.Lookup
     hasRoute<ScanHomeRoute>() -> TopLevel.Scan
+    hasRoute<ReaderRoute>() -> TopLevel.Read
     hasRoute<SettingsRoute>() -> TopLevel.Settings
     else -> null
 }
@@ -202,7 +208,7 @@ fun AppRoot(
                         startDestination = if (!loaded.onboardingComplete && dictionaries.isEmpty()) {
                             OnboardingRoute
                         } else {
-                            SearchRoute
+                            SearchRoute()
                         },
                         modifier = Modifier.fillMaxSize(),
                         enterTransition = { enter() },
@@ -210,10 +216,13 @@ fun AppRoot(
                         popEnterTransition = { fadeIn(effects) + scaleIn(spatial, initialScale = 0.96f) },
                         popExitTransition = { popExit() },
                     ) {
-                        composable<SearchRoute> {
+                        composable<SearchRoute> { entry ->
+                            val route = entry.toRoute<SearchRoute>()
                             SearchScreen(
                                 container = container,
                                 onOpenDictionaries = { navController.navigate(DictionariesRoute) },
+                                initialQuery = route.query,
+                                onOpenKanji = { kanji -> navController.navigate(KanjiRoute(kanji.toString())) },
                             )
                         }
                         composable<ScanHomeRoute> {
@@ -221,6 +230,22 @@ fun AppRoot(
                                 container = container,
                                 onScan = { path -> navController.navigate(ScanRoute(path)) },
                                 onOpenDictionaries = { navController.navigate(DictionariesRoute) },
+                            )
+                        }
+                        composable<ReaderRoute> {
+                            ReaderScreen(
+                                container = container,
+                                onOpenKanji = { kanji -> navController.navigate(KanjiRoute(kanji.toString())) },
+                            )
+                        }
+                        composable<KanjiRoute> { entry ->
+                            val route = entry.toRoute<KanjiRoute>()
+                            KanjiScreen(
+                                container = container,
+                                character = route.character,
+                                onBack = { navController.popBackStack() },
+                                onOpenWord = { word -> navController.navigate(SearchRoute(word)) },
+                                onOpenKanji = { kanji -> navController.navigate(KanjiRoute(kanji.toString())) },
                             )
                         }
                         composable<SettingsRoute> {
@@ -239,7 +264,7 @@ fun AppRoot(
                             OnboardingScreen(
                                 container = container,
                                 onDone = {
-                                    navController.navigate(SearchRoute) {
+                                    navController.navigate(SearchRoute()) {
                                         popUpTo(navController.graph.findStartDestination().id) { inclusive = true }
                                         launchSingleTop = true
                                     }
@@ -252,13 +277,18 @@ fun AppRoot(
                                 container = container,
                                 imagePath = route.imagePath,
                                 onBack = { navController.popBackStack() },
+                                onOpenKanji = { kanji -> navController.navigate(KanjiRoute(kanji.toString())) },
                             )
                         }
                     }
-                    // The frozen reader is a full-screen view with its own status, so it
-                    // keeps the downloads to itself.
-                    val readerOpen = backStackEntry?.destination?.hasRoute<ScanRoute>() == true
-                    if (!readerOpen) {
+                    // The scan reader, the file reader, and the kanji detail are full-screen
+                    // views with their own bottom content, so they keep the downloads to themselves.
+                    val fullScreen = backStackEntry?.destination?.let { destination ->
+                        destination.hasRoute<ScanRoute>() ||
+                            destination.hasRoute<ReaderRoute>() ||
+                            destination.hasRoute<KanjiRoute>()
+                    } == true
+                    if (!fullScreen) {
                         ComponentDownloadPill(
                             statuses = components,
                             onRetry = container.components::retry,

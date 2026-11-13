@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.elianiva.jisholens.data.DictionaryRepository
+import com.elianiva.jisholens.data.NotesRepository
 import com.elianiva.jisholens.data.SearchQuery
 import com.elianiva.jisholens.data.SettingsRepository
 import com.elianiva.jisholens.domain.Entry
@@ -30,6 +31,7 @@ data class SearchUiState(
 class SearchViewModel(
     private val repository: DictionaryRepository,
     private val settings: SettingsRepository,
+    private val notes: NotesRepository,
     private val savedStateHandle: SavedStateHandle,
     initialQuery: String? = null,
 ) : ViewModel() {
@@ -42,6 +44,10 @@ class SearchViewModel(
 
     val recents: StateFlow<List<String>> = settings.recentSearches
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Saved notes, keyed by headword, so every entry card can show its own. */
+    val savedNotes: StateFlow<Map<String, String>> = notes.notes
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     private var debounceJob: Job? = null
     private var searchJob: Job? = null
@@ -90,6 +96,10 @@ class SearchViewModel(
 
     fun clearRecents() {
         viewModelScope.launch { settings.clearRecentSearches() }
+    }
+
+    fun saveNote(expression: String, note: String) {
+        viewModelScope.launch { notes.setNote(expression, note) }
     }
 
     private fun search() {

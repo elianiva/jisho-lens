@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.elianiva.jisholens.data.DictionaryRepository
 import com.elianiva.jisholens.data.ImageLoader
+import com.elianiva.jisholens.data.NotesRepository
 import com.elianiva.jisholens.data.OcrEngine
 import com.elianiva.jisholens.data.TextLineBox
 import com.elianiva.jisholens.domain.Entry
@@ -13,8 +14,10 @@ import com.elianiva.jisholens.domain.ScanWord
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -34,11 +37,14 @@ data class ScanUiState(
 class ScanViewModel(
     private val context: Context,
     private val repository: DictionaryRepository,
+    private val notes: NotesRepository,
     private val ocr: OcrEngine,
     private val imagePath: String,
 ) : ViewModel() {
     private val _state = MutableStateFlow(ScanUiState())
     val state: StateFlow<ScanUiState> = _state.asStateFlow()
+    val savedNotes: StateFlow<Map<String, String>> = notes.notes
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
     private var lineJob: Job? = null
 
     init {
@@ -115,5 +121,9 @@ class ScanViewModel(
             }
             _state.update { it.copy(entries = entries, selectedWord = -1) }
         }
+    }
+
+    fun saveNote(expression: String, note: String) {
+        viewModelScope.launch { notes.setNote(expression, note) }
     }
 }

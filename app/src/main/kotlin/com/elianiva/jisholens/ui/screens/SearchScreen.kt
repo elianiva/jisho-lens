@@ -60,6 +60,7 @@ import com.elianiva.jisholens.data.AppContainer
 import com.elianiva.jisholens.ui.components.EmptyState
 import com.elianiva.jisholens.ui.components.EntryCard
 import com.elianiva.jisholens.ui.components.LargeActionButton
+import com.elianiva.jisholens.ui.components.rememberTextSpeaker
 import com.elianiva.jisholens.ui.theme.JapaneseLocale
 
 /** What the lookup screen can do with the dictionaries it has. */
@@ -72,6 +73,7 @@ fun SearchScreen(
     modifier: Modifier = Modifier,
     initialQuery: String? = null,
     onClose: (() -> Unit)? = null,
+    onOpenKanji: ((Char) -> Unit)? = null,
 ) {
     val viewModel: SearchViewModel = viewModel(
         factory = viewModelFactory {
@@ -79,6 +81,7 @@ fun SearchScreen(
                 SearchViewModel(
                     repository = container.repository,
                     settings = container.settings,
+                    notes = container.notes,
                     savedStateHandle = createSavedStateHandle(),
                     initialQuery = initialQuery,
                 )
@@ -87,7 +90,9 @@ fun SearchScreen(
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
     val recents by viewModel.recents.collectAsStateWithLifecycle()
+    val notes by viewModel.savedNotes.collectAsStateWithLifecycle()
     val dictionaries by container.dictionaries.collectAsStateWithLifecycle()
+    val speaker = rememberTextSpeaker()
     val status = when {
         dictionaries.isEmpty() -> DictionaryStatus.None
         dictionaries.none { it.enabled } -> DictionaryStatus.AllOff
@@ -107,6 +112,10 @@ fun SearchScreen(
         onOpenDictionaries = onOpenDictionaries,
         modifier = modifier,
         onClose = onClose,
+        notes = notes,
+        onSaveNote = viewModel::saveNote,
+        onOpenKanji = onOpenKanji,
+        onSpeak = speaker?.let { voice -> { word: String -> voice.speak(word) } },
     )
 }
 
@@ -124,6 +133,10 @@ fun SearchContent(
     onOpenDictionaries: (() -> Unit)?,
     modifier: Modifier = Modifier,
     onClose: (() -> Unit)? = null,
+    notes: Map<String, String> = emptyMap(),
+    onSaveNote: ((String, String) -> Unit)? = null,
+    onOpenKanji: ((Char) -> Unit)? = null,
+    onSpeak: ((String) -> Unit)? = null,
 ) {
     val body: @Composable (Modifier) -> Unit = { bodyModifier ->
         Column(
@@ -145,6 +158,10 @@ fun SearchContent(
                     onPickQuery = onPickQuery,
                     onClearRecents = onClearRecents,
                     onOpenDictionaries = onOpenDictionaries,
+                    notes = notes,
+                    onSaveNote = onSaveNote,
+                    onOpenKanji = onOpenKanji,
+                    onSpeak = onSpeak,
                 )
             }
         }
@@ -226,6 +243,10 @@ private fun SearchBody(
     onPickQuery: (String) -> Unit,
     onClearRecents: () -> Unit,
     onOpenDictionaries: (() -> Unit)?,
+    notes: Map<String, String>,
+    onSaveNote: ((String, String) -> Unit)?,
+    onOpenKanji: ((Char) -> Unit)?,
+    onSpeak: ((String) -> Unit)?,
 ) {
     when {
         status == DictionaryStatus.None -> EmptyState(
@@ -267,7 +288,15 @@ private fun SearchBody(
                 )
             }
             items(items = state.results, key = { "${it.termId}:${it.dictionaryId}" }) { entry ->
-                EntryCard(entry = entry, loadMedia = loadMedia, onQuery = onPickQuery)
+                EntryCard(
+                    entry = entry,
+                    loadMedia = loadMedia,
+                    onQuery = onPickQuery,
+                    onKanji = onOpenKanji,
+                    note = notes[entry.expression].orEmpty(),
+                    onSaveNote = onSaveNote?.let { save -> { value -> save(entry.expression, value) } },
+                    onSpeak = onSpeak?.let { speak -> { speak(entry.expression) } },
+                )
             }
         }
         state.isLoading -> {
