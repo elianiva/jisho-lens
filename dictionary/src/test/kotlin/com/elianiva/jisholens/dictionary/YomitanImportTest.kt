@@ -124,6 +124,18 @@ class YomitanImportTest {
     }
 
     @Test
+    fun `finds terms that contain a kanji`() {
+        Fixtures.database().use { database ->
+            Fixtures.archive(version3Files()).use { archive -> YomitanImporter(database).import(archive) }
+            val lookup = DictionaryLookup(database)
+
+            val expressions = lookup.termsContaining("食").map { it.expression }
+            assertEquals(listOf("食べる", "食べ"), expressions)
+            assertTrue(lookup.termsContaining("走").isEmpty())
+        }
+    }
+
+    @Test
     fun `imports the old format one layout`() {
         Fixtures.database().use { database ->
             Fixtures.archive(legacyFiles()).use { archive ->

@@ -618,6 +618,35 @@ class DictionaryLookup(private val database: SqliteDatabase) {
         ).map { kanjiResult(it) }
     }
 
+    /**
+     * The dictionary words whose expression contains [character], for the kanji detail
+     * screen. The FTS column filter keeps the scan inside the index instead of matching
+     * a wildcard against every expression in the database.
+     */
+    fun termsContaining(character: String, limit: Int = 40): List<TermResult> {
+        val value = character.trim()
+        if (value.isEmpty() || limit <= 0) return emptyList()
+        val match = FtsText.buildQuery(value) ?: return emptyList()
+        // FTS4 column filters do not accept a quoted phrase after the colon, so the
+        // phrase is split into one filtered token per character.
+        val filtered = match.split(' ').joinToString(" ") { token -> "expression:${token.trim('"')}" }
+        return termResults(
+            database.query(
+                """
+                SELECT t.id, t.dictionaryId, d.title, t.expression, t.reading, t.definitionTags, t.termTags,
+                       t.rules, t.score, t.sequence, t.glossaryBlock, t.glossaryOffset, t.glossaryLength
+                FROM terms_fts
+                JOIN terms t ON t.id = terms_fts.rowid
+                JOIN dictionaries d ON d.id = t.dictionaryId
+                WHERE terms_fts MATCH ? AND d.enabled = 1
+                ORDER BY d.priority ASC, t.score DESC, LENGTH(t.expression) ASC
+                LIMIT ?
+                """,
+                listOf(filtered, limit),
+            ),
+        )
+    }
+
     fun searchKanji(query: String, limit: Int = 20): List<KanjiResult> {
         val match = FtsText.buildQuery(query) ?: return emptyList()
         return database.query(

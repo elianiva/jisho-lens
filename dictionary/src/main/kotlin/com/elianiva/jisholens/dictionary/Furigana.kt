@@ -70,6 +70,29 @@ object Furigana {
     private fun fallback(expression: String, reading: String): List<RubySegment> =
         listOf(RubySegment(expression, reading))
 
+    /**
+     * The reading of an inflected [surface], built from the dictionary form's [ruby].
+     *
+     * A conjugated word keeps its kanji runs, so 食べた inherits the た over 食 from
+     * 食べる while the kana tail that changed stays as the surface writes it. When a
+     * run cannot be found the surface itself is returned, and the caller can skip
+     * ruby that would only repeat it.
+     */
+    fun surfaceReading(surface: String, ruby: List<RubySegment>): String {
+        if (surface.isEmpty() || ruby.isEmpty()) return ""
+        val out = StringBuilder(surface.length)
+        var cursor = 0
+        for (segment in ruby) {
+            val at = surface.indexOf(segment.text, cursor)
+            if (at < 0) continue
+            if (at > cursor) out.append(surface, cursor, at)
+            if (segment.reading != null) out.append(segment.reading) else out.append(segment.text)
+            cursor = at + segment.text.length
+        }
+        if (cursor < surface.length) out.append(surface, cursor, surface.length)
+        return out.toString()
+    }
+
     private fun isKanji(character: Char): Boolean = when (character) {
         '\u3005', '\u3006', '\u303B', '\u3007' -> true
         in '\u3400'..'\u4DBF' -> true

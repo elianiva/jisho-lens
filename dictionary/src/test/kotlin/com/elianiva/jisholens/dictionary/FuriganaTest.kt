@@ -41,4 +41,13 @@ class FuriganaTest {
     fun `does not add ruby to kana only words`() {
         assertNull(Furigana.align("たべる", "たべる").single().reading)
     }
+
+    @Test
+    fun `an inflected surface keeps the kanji reading and its own kana`() {
+        val taberu = Furigana.align("食べる", "たべる")
+        assertEquals("たべる", Furigana.surfaceReading("食べる", taberu))
+        assertEquals("たべた", Furigana.surfaceReading("食べた", taberu))
+        assertEquals("たべさせられた", Furigana.surfaceReading("食べさせられた", taberu))
+        assertEquals("おいしかった", Furigana.surfaceReading("美味しかった", Furigana.align("美味しい", "おいしい")))
+    }
 }
