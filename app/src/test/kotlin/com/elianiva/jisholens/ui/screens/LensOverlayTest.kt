@@ -51,6 +51,7 @@ class LensOverlayTest {
                     onScroll = { scrolled = it },
                     onCopy = {},
                     onMine = {},
+                    onToggleStudy = {},
                     onClose = {},
                 )
             }

@@ -1,14 +1,16 @@
 package com.elianiva.jisholens.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.automirrored.rounded.StickyNote2
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -22,6 +24,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.elianiva.jisholens.dictionary.Glossary
 import com.elianiva.jisholens.domain.Entry
+import com.elianiva.jisholens.domain.deinflectionPhrase
 import com.elianiva.jisholens.ui.theme.JapaneseLocale
 
 /**
@@ -36,7 +39,11 @@ fun CompactEntryCard(
     entry: Entry,
     onExpand: () -> Unit,
     modifier: Modifier = Modifier,
-    actions: @Composable RowScope.() -> Unit = {},
+    onKanji: ((Char) -> Unit)? = null,
+    onSpeak: (() -> Unit)? = null,
+    note: String = "",
+    onEditNote: (() -> Unit)? = null,
+    expandDescription: String = "Open the full entry",
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -56,6 +63,7 @@ fun CompactEntryCard(
                         segments = entry.ruby,
                         baseStyle = MaterialTheme.typography.headlineMediumEmphasized,
                         readingStyle = MaterialTheme.typography.labelMedium,
+                        onKanji = onKanji,
                     )
                     if (entry.ruby.isEmpty()) {
                         Text(
@@ -80,11 +88,21 @@ fun CompactEntryCard(
                         )
                     }
                 }
+                if (onSpeak != null) {
+                    IconButton(onClick = onSpeak, modifier = Modifier.size(40.dp)) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.VolumeUp,
+                            contentDescription = "Pronounce ${entry.expression}",
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
                 if (entry.frequency != null) FrequencyPill(entry.frequency)
                 IconButton(onClick = onExpand) {
                     Icon(
                         imageVector = Icons.Rounded.ChevronRight,
-                        contentDescription = "Open the full entry",
+                        contentDescription = expandDescription,
                     )
                 }
             }
@@ -109,30 +127,50 @@ fun CompactEntryCard(
                 )
             }
 
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                    if (entry.dictionaryTitle.isNotBlank()) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.MenuBook,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            text = entry.dictionaryTitle,
-                            modifier = Modifier.padding(start = 4.dp),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
+            if (note.isNotBlank()) {
+                Row(
+                    modifier = Modifier
+                        .padding(top = 8.dp, end = 8.dp)
+                        .then(if (onEditNote != null) Modifier.clickable(onClick = onEditNote) else Modifier),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.StickyNote2,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(
+                        text = note,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
-                actions()
+            }
+
+            if (entry.dictionaryTitle.isNotBlank()) {
+                Row(
+                    modifier = Modifier.padding(top = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.MenuBook,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = entry.dictionaryTitle,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
     }
@@ -142,10 +180,16 @@ fun CompactEntryCard(
 internal fun compactGloss(text: String): String =
     text.split(';').take(2).joinToString(";").trim()
 
-/** `食べさせられた → 食べる`, then the rules that connect them. */
+/** `食べさせられた → 食べる`, then the plain-English chain and the phrase it produces. */
 internal fun deinflectionLine(entry: Entry): String {
     val surface = entry.deinflection ?: return ""
-    val rules = entry.deinflectionReasons.joinToString(" + ")
-    val arrow = "$surface → ${entry.expression}"
-    return if (rules.isEmpty()) arrow else "$arrow\n$rules"
+    val phrase = deinflectionPhrase(entry.deinflectionReasons, Glossary.text(entry.glossary))
+    val lines = buildList {
+        add("$surface → ${entry.expression}")
+        if (phrase != null) {
+            add(phrase.chain)
+            phrase.meaning?.let(::add)
+        }
+    }
+    return lines.joinToString("\n")
 }

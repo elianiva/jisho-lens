@@ -10,11 +10,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.MenuBook
+import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material.icons.rounded.SubdirectoryArrowRight
-import androidx.compose.material.icons.rounded.TrendingUp
+import androidx.compose.material.icons.automirrored.rounded.TrendingUp
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -30,8 +32,10 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.elianiva.jisholens.dictionary.Glossary
 import com.elianiva.jisholens.domain.Entry
 import com.elianiva.jisholens.domain.EntryTag
+import com.elianiva.jisholens.domain.deinflectionPhrase
 import com.elianiva.jisholens.ui.theme.JapaneseLocale
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
@@ -46,6 +50,10 @@ fun EntryCard(
     loadMedia: suspend (dictionaryId: Long, path: String) -> ByteArray?,
     onQuery: (String) -> Unit,
     modifier: Modifier = Modifier,
+    onKanji: ((Char) -> Unit)? = null,
+    note: String = "",
+    onSaveNote: ((String) -> Unit)? = null,
+    onSpeak: (() -> Unit)? = null,
 ) {
     var selectedTag by remember { mutableStateOf<EntryTag?>(null) }
     Surface(
@@ -65,7 +73,18 @@ fun EntryCard(
                     modifier = Modifier.weight(1f),
                     baseStyle = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Medium),
                     readingStyle = MaterialTheme.typography.labelLarge,
+                    onKanji = onKanji,
                 )
+                if (onSpeak != null) {
+                    IconButton(onClick = onSpeak, modifier = Modifier.size(40.dp)) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.VolumeUp,
+                            contentDescription = "Pronounce ${entry.expression}",
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
                 if (entry.frequency != null) FrequencyPill(entry.frequency)
             }
             val pitch = entry.pitch.firstOrNull()
@@ -85,22 +104,40 @@ fun EntryCard(
                 )
             }
             if (entry.deinflection != null) {
-                Row(
-                    modifier = Modifier.padding(top = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.SubdirectoryArrowRight,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        text = "From ${entry.deinflection}",
-                        style = MaterialTheme.typography.labelLarge.copy(localeList = JapaneseLocale),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                val phrase = deinflectionPhrase(entry.deinflectionReasons, Glossary.text(entry.glossary))
+                Column(Modifier.padding(top = 4.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.SubdirectoryArrowRight,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = "From ${entry.deinflection}",
+                            style = MaterialTheme.typography.labelLarge.copy(localeList = JapaneseLocale),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    if (phrase != null) {
+                        Text(
+                            text = phrase.chain,
+                            modifier = Modifier.padding(start = 22.dp, top = 2.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        phrase.meaning?.let { meaning ->
+                            Text(
+                                text = meaning,
+                                modifier = Modifier.padding(start = 22.dp),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
                 }
             }
 
@@ -126,6 +163,10 @@ fun EntryCard(
                 )
             }
 
+            if (onSaveNote != null) {
+                EntryNote(note = note, onSave = onSaveNote, expression = entry.expression)
+            }
+
             if (entry.dictionaryTitle.isNotBlank()) {
                 Row(
                     modifier = Modifier.padding(top = 12.dp),
@@ -133,7 +174,7 @@ fun EntryCard(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.MenuBook,
+                        imageVector = Icons.AutoMirrored.Rounded.MenuBook,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -174,7 +215,7 @@ internal fun FrequencyPill(value: Double) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Icon(Icons.Rounded.TrendingUp, contentDescription = null, modifier = Modifier.size(16.dp))
+            Icon(Icons.AutoMirrored.Rounded.TrendingUp, contentDescription = null, modifier = Modifier.size(16.dp))
             Text(text = text, style = MaterialTheme.typography.labelLarge)
         }
     }

@@ -2,10 +2,13 @@ package com.elianiva.jisholens.screen
 
 import android.graphics.Rect
 import com.elianiva.jisholens.data.DictionaryRepository
+import com.elianiva.jisholens.data.NotesRepository
 import com.elianiva.jisholens.data.SettingsRepository
+import com.elianiva.jisholens.domain.Coverage
 import com.elianiva.jisholens.domain.Entry
 import com.elianiva.jisholens.domain.ScanWord
 import com.elianiva.jisholens.domain.headword
+import com.elianiva.jisholens.domain.pageCoverage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -44,12 +47,21 @@ data class LensUiState(
     val expanded: Boolean = false,
     val lookingUp: Boolean = false,
     val knownWords: Set<String> = emptySet(),
+    /** Notes keyed by headword, so the selected entry can show and edit its own. */
+    val notes: Map<String, String> = emptyMap(),
     val canReadImage: Boolean = false,
     val fromImage: Boolean = false,
+    /** True when the lens draws furigana and marks the words the reader does not know. */
+    val study: Boolean = false,
+    /** The dictionary words of each line, filled while study mode is on. */
+    val lineWords: Map<Int, List<ScanWord>> = emptyMap(),
 ) {
     val line: LensLine? get() = lines.getOrNull(selectedLine)
     val word: ScanWord? get() = candidates.getOrNull(selectedCandidate)
     val entries: List<Entry> get() = word?.entries.orEmpty()
+
+    /** How much of the page the reader already knows, counted once per headword. */
+    val coverage: Coverage get() = pageCoverage(lineWords.values.flatten(), knownWords)
 
     /** The selected word's box on screen, for the highlight under the entry sheet. */
     val wordBox: Rect?
@@ -68,6 +80,7 @@ data class LensUiState(
 class LensPresenter(
     private val repository: DictionaryRepository,
     private val settings: SettingsRepository,
+    private val notes: NotesRepository,
     private val reader: LensNodeReader,
     private val onDismiss: () -> Unit,
 ) {
@@ -77,12 +90,16 @@ class LensPresenter(
 
     private var readJob: Job? = null
     private var selectionJob: Job? = null
+    private var studyJob: Job? = null
     private var idleJob: Job? = null
     private var selectionToken = 0
 
     init {
         scope.launch {
             settings.knownWords.collect { known -> _state.update { it.copy(knownWords = known) } }
+        }
+        scope.launch {
+            notes.notes.collect { saved -> _state.update { it.copy(notes = saved) } }
         }
     }
 
@@ -94,6 +111,7 @@ class LensPresenter(
     fun close() {
         readJob?.cancel()
         selectionJob?.cancel()
+        studyJob?.cancel()
         idleJob?.cancel()
         scope.cancel()
     }
@@ -107,6 +125,17 @@ class LensPresenter(
         touch()
         if (!_state.value.canReadImage) return
         read(forceImage = true)
+    }
+
+    /**
+     * Turns furigana and the unknown-word tint on or off. The screen has already been
+     * read, so this only looks up the words in the lines it has; it never recognises text again.
+     */
+    fun toggleStudy() {
+        touch()
+        val on = !_state.value.study
+        _state.update { it.copy(study = on, lineWords = if (on) it.lineWords else emptyMap()) }
+        if (on) scanStudyLines() else studyJob?.cancel()
     }
 
     /** A window change: re-read the tree when no entry is open, so highlights follow the page. */
@@ -196,6 +225,11 @@ class LensPresenter(
         scope.launch { settings.setKnown(expression, !known) }
     }
 
+    fun saveNote(expression: String, note: String) {
+        touch()
+        scope.launch { notes.setNote(expression, note) }
+    }
+
     fun expand() {
         if (_state.value.entries.isEmpty()) return
         touch()
@@ -251,6 +285,7 @@ class LensPresenter(
                     it.copy(lines = emptyList(), scanning = false, lookingUp = false, message = LensMessage.Failed)
                 }
             }
+            if (_state.value.study) scanStudyLines()
         }
     }
 
@@ -259,6 +294,27 @@ class LensPresenter(
         idleJob = scope.launch {
             delay(IDLE_TIMEOUT_MILLIS)
             onDismiss()
+        }
+    }
+
+    /** Looks up every line on this page, so study mode can draw the whole page at once. */
+    private fun scanStudyLines() {
+        studyJob?.cancel()
+        val lines = _state.value.lines
+        if (lines.isEmpty()) return
+        studyJob = scope.launch {
+            val words = HashMap<Int, List<ScanWord>>()
+            lines.forEachIndexed { index, line ->
+                val found = try {
+                    repository.scan(line.text)
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    emptyList()
+                }
+                if (found.isNotEmpty()) words[index] = found
+            }
+            if (_state.value.study) _state.update { it.copy(lineWords = words) }
         }
     }
 

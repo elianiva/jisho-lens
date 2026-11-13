@@ -14,6 +14,7 @@ class AppContainer(context: Context) {
     val database = DictionaryDatabase(appContext)
     val repository = DictionaryRepository(database)
     val settings = SettingsRepository(appContext)
+    val notes = NotesRepository(appContext)
     val importController = ImportController()
     val ocr = OcrEngine()
     val components = ComponentManager(listOf(OcrModelComponent(appContext)), scope)

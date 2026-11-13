@@ -11,8 +11,6 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,20 +19,14 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.DocumentScanner
-import androidx.compose.material.icons.automirrored.rounded.NoteAdd
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.FilledTonalIconButton
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -63,15 +55,26 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.elianiva.jisholens.dictionary.Furigana
+import com.elianiva.jisholens.domain.Coverage
 import com.elianiva.jisholens.domain.Entry
 import com.elianiva.jisholens.domain.ScanWord
+import com.elianiva.jisholens.domain.hasKanji
+import com.elianiva.jisholens.domain.isKnown
 import com.elianiva.jisholens.screen.LensMessage
 import com.elianiva.jisholens.screen.LensUiState
-import com.elianiva.jisholens.ui.components.CompactEntryCard
-import com.elianiva.jisholens.ui.components.EntryCard
+import com.elianiva.jisholens.screen.wordRect
+import com.elianiva.jisholens.ui.components.CandidateSheet
+import com.elianiva.jisholens.ui.components.ExpandedEntrySheet
 import com.elianiva.jisholens.ui.components.fitOrigin
 import com.elianiva.jisholens.ui.components.fitScale
 import com.elianiva.jisholens.ui.theme.JapaneseLocale
@@ -105,12 +108,18 @@ fun LensOverlayContent(
     onMine: (Entry) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
+    onSaveNote: ((String, String) -> Unit)? = null,
+    onSpeak: ((String) -> Unit)? = null,
+    onToggleStudy: () -> Unit = {},
 ) {
     if (state.expanded) {
-        ExpandedEntry(
+        ExpandedEntrySheet(
             entries = state.entries,
             loadMedia = loadMedia,
-            onClose = onCollapse,
+            onBack = onCollapse,
+            noteFor = { entry -> state.notes[entry.expression].orEmpty() },
+            onSaveNote = onSaveNote,
+            onSpeak = onSpeak,
             modifier = modifier.fillMaxSize(),
         )
         return
@@ -133,6 +142,8 @@ fun LensOverlayContent(
         LensTopBar(
             canReadImage = state.canReadImage,
             busy = state.scanning,
+            study = state.study,
+            onToggleStudy = onToggleStudy,
             onReadImage = onReadImage,
             onRescan = onRescan,
             onClose = onClose,
@@ -173,21 +184,30 @@ fun LensOverlayContent(
                     )
                     SheetKind.Loading -> LoadingCard("Reading the screen…")
                     SheetKind.Lookup -> LoadingCard("Looking up…")
-                    SheetKind.Word -> WordSheet(
-                        state = state,
+                    SheetKind.Word -> CandidateSheet(
+                        candidates = state.candidates,
+                        selectedCandidate = state.selectedCandidate,
+                        knownWords = state.knownWords,
+                        note = state.entries.firstOrNull()?.let { entry -> state.notes[entry.expression] }.orEmpty(),
                         onSelectCandidate = onSelectCandidate,
                         onToggleKnown = onToggleKnown,
                         onExpand = onExpand,
                         onClearSelection = onClearSelection,
                         onCopy = onCopy,
                         onMine = onMine,
+                        onSpeak = onSpeak,
+                        onSpeakSentence = state.line?.text
+                            ?.takeIf { onSpeak != null }
+                            ?.let { sentence -> { onSpeak?.invoke(sentence) } },
+                        onSaveNote = onSaveNote,
+                        coverage = if (state.study) state.coverage else null,
                     )
                     SheetKind.NoEntry -> NoEntryCard(
                         surface = state.line?.text.orEmpty(),
                         onCopy = onCopy,
                         onClearSelection = onClearSelection,
                     )
-                    SheetKind.Hint -> HintPill()
+                    SheetKind.Hint -> HintPill(coverage = if (state.study) state.coverage else null)
                 }
             }
         }
@@ -208,6 +228,7 @@ private fun HighlightLayer(
     val density = LocalDensity.current
     val underline = with(density) { 2.dp.toPx() }
     val shadow = with(density) { 5.dp.toPx() }
+    val textMeasurer = rememberTextMeasurer()
     var canvas by remember { mutableStateOf(IntSize.Zero) }
 
     Canvas(
@@ -302,6 +323,43 @@ private fun HighlightLayer(
                     style = Stroke(width = underline),
                 )
             }
+            if (state.study) {
+                state.lineWords.forEach { (index, words) ->
+                    val line = state.lines.getOrNull(index) ?: return@forEach
+                    words.forEach { word ->
+                        val rect = line.wordRect(word.start, word.end)
+                        if (rect.width() <= 0) return@forEach
+                        val known = word.isKnown(state.knownWords)
+                        if (!known) {
+                            drawRoundRect(
+                                color = accent.copy(alpha = 0.16f),
+                                topLeft = Offset(rect.left - 2f, rect.top - 2f),
+                                size = Size(rect.width() + 4f, rect.height() + 4f),
+                                cornerRadius = CornerRadius(6f),
+                            )
+                        }
+                        val entry = word.entries.firstOrNull() ?: return@forEach
+                        val reading = Furigana.surfaceReading(word.surface, entry.ruby).ifBlank { entry.reading }
+                        if (reading.isBlank() || reading == word.surface || !word.surface.hasKanji()) return@forEach
+                        val style = TextStyle(
+                            color = if (known) accent.copy(alpha = 0.55f) else accent,
+                            fontSize = with(density) {
+                                (line.rect.height() * 0.30f).coerceIn(10f, 44f).toSp()
+                            },
+                            localeList = JapaneseLocale,
+                        )
+                        val layout = textMeasurer.measure(AnnotatedString(reading), style = style, maxLines = 1)
+                        if (layout.size.width > rect.width() + 8f) return@forEach
+                        drawText(
+                            textLayoutResult = layout,
+                            topLeft = Offset(
+                                x = rect.left + (rect.width() - layout.size.width) / 2f,
+                                y = (rect.top - layout.size.height - 1f).coerceAtLeast(0f),
+                            ),
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -310,6 +368,8 @@ private fun HighlightLayer(
 private fun LensTopBar(
     canReadImage: Boolean,
     busy: Boolean,
+    study: Boolean,
+    onToggleStudy: () -> Unit,
     onReadImage: () -> Unit,
     onRescan: () -> Unit,
     onClose: () -> Unit,
@@ -318,6 +378,10 @@ private fun LensTopBar(
     val colors = IconButtonDefaults.filledTonalIconButtonColors(
         containerColor = Color.Black.copy(alpha = 0.55f),
         contentColor = Color.White,
+    )
+    val studyColors = IconButtonDefaults.filledTonalIconButtonColors(
+        containerColor = if (study) MaterialTheme.colorScheme.primary else Color.Black.copy(alpha = 0.55f),
+        contentColor = if (study) MaterialTheme.colorScheme.onPrimary else Color.White,
     )
     Row(
         modifier = modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp),
@@ -328,6 +392,12 @@ private fun LensTopBar(
             Icon(Icons.Rounded.Close, contentDescription = "Close the lens")
         }
         Spacer(Modifier.weight(1f))
+        FilledTonalIconButton(onClick = onToggleStudy, colors = studyColors) {
+            Icon(
+                imageVector = Icons.Rounded.Translate,
+                contentDescription = if (study) "Hide furigana and word difficulty" else "Show furigana and word difficulty",
+            )
+        }
         if (canReadImage) {
             FilledTonalIconButton(onClick = onReadImage, enabled = !busy, colors = colors) {
                 Icon(Icons.Rounded.DocumentScanner, contentDescription = "Read the image instead")
@@ -340,92 +410,6 @@ private fun LensTopBar(
 }
 
 private enum class SheetKind { Loading, Lookup, Message, Word, NoEntry, Hint }
-
-@Composable
-private fun WordSheet(
-    state: LensUiState,
-    onSelectCandidate: (Int) -> Unit,
-    onToggleKnown: () -> Unit,
-    onExpand: () -> Unit,
-    onClearSelection: () -> Unit,
-    onCopy: (String) -> Unit,
-    onMine: (Entry) -> Unit,
-) {
-    val entry = state.entries.firstOrNull() ?: return
-    val word = state.word
-    val known = entry.expression in state.knownWords
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (state.candidates.size > 1) {
-            Surface(
-                shape = MaterialTheme.shapes.extraLarge,
-                color = MaterialTheme.colorScheme.surfaceContainerLow,
-                tonalElevation = 3.dp,
-            ) {
-                Row(
-                    modifier = Modifier.padding(start = 12.dp, end = 16.dp, top = 6.dp, bottom = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    FlowRow(
-                        modifier = Modifier.weight(1f, fill = false),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        state.candidates.forEachIndexed { index, candidate ->
-                            FilterChip(
-                                selected = index == state.selectedCandidate,
-                                onClick = { onSelectCandidate(index) },
-                                label = {
-                                    Text(
-                                        text = candidate.surface,
-                                        style = MaterialTheme.typography.titleSmall.copy(localeList = JapaneseLocale),
-                                    )
-                                },
-                            )
-                        }
-                    }
-                    Text(
-                        text = "${state.selectedCandidate + 1} of ${state.candidates.size}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        }
-        CompactEntryCard(
-            entry = entry,
-            onExpand = onExpand,
-            actions = {
-                IconButton(onClick = { onMine(entry) }) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.NoteAdd,
-                        contentDescription = "Make an Anki note for ${entry.expression}",
-                    )
-                }
-                IconButton(onClick = onToggleKnown) {
-                    Icon(
-                        imageVector = Icons.Rounded.Check,
-                        contentDescription = if (known) "Unmark ${entry.expression} as known" else "Mark ${entry.expression} as known",
-                        tint = if (known) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                IconButton(onClick = { onCopy(entry.expression) }) {
-                    Icon(Icons.Rounded.ContentCopy, contentDescription = "Copy the word")
-                }
-                IconButton(onClick = onClearSelection) {
-                    Icon(Icons.Rounded.Close, contentDescription = "Clear the selection")
-                }
-            },
-        )
-        if (word != null && state.entries.size > 1) {
-            Text(
-                text = "${state.entries.size} entries for ${word.surface}",
-                modifier = Modifier.padding(start = 8.dp),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
 
 @Composable
 private fun NoEntryCard(
@@ -539,47 +523,24 @@ private fun LoadingCard(text: String) {
 }
 
 @Composable
-private fun HintPill() {
+private fun HintPill(coverage: Coverage? = null) {
+    val known = coverage?.takeIf { it.total > 0 }
     Surface(
         shape = CircleShape,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         tonalElevation = 3.dp,
+        modifier = if (known != null) {
+            Modifier.semantics {
+                contentDescription = "Page coverage: ${known.percent} percent, ${known.known} of ${known.total} words known"
+            }
+        } else {
+            Modifier
+        },
     ) {
         Text(
-            text = "Tap a word",
+            text = if (known != null) "${known.percent}% known · Tap a word" else "Tap a word",
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
             style = MaterialTheme.typography.titleSmallEmphasized,
         )
-    }
-}
-
-/** The full entry, every gloss and tag, replacing the page until Back. */
-@Composable
-private fun ExpandedEntry(
-    entries: List<Entry>,
-    loadMedia: suspend (Long, String) -> ByteArray?,
-    onClose: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Surface(modifier, color = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface) {
-        Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(onClick = onClose) {
-                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back to the page")
-                }
-                Text("Entry", style = MaterialTheme.typography.titleLargeEmphasized)
-            }
-            LazyColumn(
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                items(entries, key = { "${it.termId}:${it.dictionaryId}" }) { entry ->
-                    EntryCard(entry = entry, loadMedia = loadMedia, onQuery = {})
-                }
-            }
-        }
     }
 }

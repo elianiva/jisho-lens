@@ -31,6 +31,7 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.elianiva.jisholens.R
 import com.elianiva.jisholens.data.AppContainer
+import com.elianiva.jisholens.data.TextSpeaker
 import com.elianiva.jisholens.data.buildAnkiNote
 import com.elianiva.jisholens.data.mineToAnki
 import com.elianiva.jisholens.ui.screens.LensOverlayContent
@@ -62,6 +63,7 @@ class LensOverlayHost(
 
     private var view: ComposeView? = null
     private var presenter: LensPresenter? = null
+    private var speaker: TextSpeaker? = null
 
     private val reader = LensNodeReader(service, container.ocr, this)
 
@@ -81,10 +83,13 @@ class LensOverlayHost(
         val lens = LensPresenter(
             repository = container.repository,
             settings = container.settings,
+            notes = container.notes,
             reader = reader,
             onDismiss = ::hide,
         )
         presenter = lens
+        val voice = TextSpeaker(service)
+        speaker = voice
         val compose = ComposeView(themedContext).apply {
             setViewTreeLifecycleOwner(this@LensOverlayHost)
             setViewTreeViewModelStoreOwner(this@LensOverlayHost)
@@ -94,6 +99,7 @@ class LensOverlayHost(
                 val settings by container.settings.settings.collectAsStateWithLifecycle(initialValue = null)
                 val state by lens.state.collectAsStateWithLifecycle()
                 val size by screenSize
+                val voiceAvailable by voice.available.collectAsStateWithLifecycle()
                 JishoLensTheme(
                     darkTheme = settings?.theme?.isDark(isSystemInDarkTheme()) ?: false,
                     dynamicColor = settings?.dynamicColor ?: true,
@@ -119,7 +125,10 @@ class LensOverlayHost(
                                     Toast.makeText(service, "No app can open the note", Toast.LENGTH_SHORT).show()
                                 }
                         },
+                        onToggleStudy = lens::toggleStudy,
                         onClose = ::hide,
+                        onSaveNote = lens::saveNote,
+                        onSpeak = if (voiceAvailable) ({ word: String -> voice.speak(word) }) else null,
                     )
                 }
             }
@@ -129,6 +138,8 @@ class LensOverlayHost(
         }.isSuccess
         if (!added) {
             lens.close()
+            voice.close()
+            speaker = null
             lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
             store.clear()
             presenter = null
@@ -151,6 +162,8 @@ class LensOverlayHost(
         handler.removeCallbacks(start)
         presenter?.close()
         presenter = null
+        speaker?.close()
+        speaker = null
         runCatching { windowManager.removeView(compose) }
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
