@@ -33,13 +33,18 @@ import com.elianiva.jisholens.ui.components.WithoutDecorativeMotion
 import com.elianiva.jisholens.ui.screens.DictionariesContent
 import com.elianiva.jisholens.ui.screens.DictionaryStatus
 import com.elianiva.jisholens.ui.screens.OnboardingContent
+import com.elianiva.jisholens.domain.Entry
 import com.elianiva.jisholens.domain.ScanWord
 import com.elianiva.jisholens.screen.LensLine
 import com.elianiva.jisholens.screen.LensMessage
 import com.elianiva.jisholens.screen.LensUiState
 import com.elianiva.jisholens.ui.components.fitOrigin
 import com.elianiva.jisholens.ui.components.fitScale
+import com.elianiva.jisholens.ui.screens.KanjiContent
+import com.elianiva.jisholens.ui.screens.KanjiUiState
 import com.elianiva.jisholens.ui.screens.LensOverlayContent
+import com.elianiva.jisholens.ui.screens.ReaderContent
+import com.elianiva.jisholens.ui.screens.ReaderUiState
 import com.elianiva.jisholens.ui.screens.LensSetupScreen
 import com.elianiva.jisholens.ui.screens.ScanContent
 import com.elianiva.jisholens.ui.screens.ScanHomeContent
@@ -70,6 +75,9 @@ private fun Search(
     state: SearchUiState,
     recents: List<String> = emptyList(),
     status: DictionaryStatus = DictionaryStatus.Ready,
+    notes: Map<String, String> = emptyMap(),
+    onSaveNote: ((String, String) -> Unit)? = null,
+    onSpeak: ((String) -> Unit)? = null,
 ) {
     SearchContent(
         state = state,
@@ -82,6 +90,9 @@ private fun Search(
         onPickQuery = {},
         onClearRecents = {},
         onOpenDictionaries = {},
+        notes = notes,
+        onSaveNote = onSaveNote,
+        onSpeak = onSpeak,
     )
 }
 
@@ -131,6 +142,17 @@ fun SearchResultsDark() = Frame(true) { Search(results) }
 @Composable
 fun SearchDeinflected() = Frame(false) {
     Search(SearchUiState(query = "食べさせられた", results = listOf(Samples.taberareta), hasSearched = true))
+}
+
+@Preview(name = "Search note and audio", widthDp = W, heightDp = H)
+@Composable
+fun SearchNoteAndAudio() = Frame(false) {
+    Search(
+        SearchUiState(query = "食べる", results = listOf(Samples.taberu), hasSearched = true),
+        notes = mapOf("食べる" to "Ichidan. 食べない, 食べます, 食べれば."),
+        onSaveNote = { _, _ -> },
+        onSpeak = {},
+    )
 }
 
 @Preview(name = "Search no matches", widthDp = W, heightDp = H)
@@ -320,7 +342,10 @@ private fun Lens(state: LensUiState, dark: Boolean = false, showPage: Boolean = 
             onScroll = {},
             onCopy = {},
             onMine = {},
+            onToggleStudy = {},
             onClose = {},
+            onSaveNote = { _, _ -> },
+            onSpeak = {},
         )
     }
 }
@@ -352,6 +377,8 @@ private fun lensState(
     expanded: Boolean = false,
     knownWords: Set<String> = emptySet(),
     canReadImage: Boolean = true,
+    study: Boolean = false,
+    lineWords: Map<Int, List<ScanWord>> = emptyMap(),
 ): LensUiState = LensUiState(
     lines = lines,
     scanning = scanning,
@@ -361,13 +388,62 @@ private fun lensState(
     expanded = expanded,
     knownWords = knownWords,
     canReadImage = canReadImage,
+    study = study,
+    lineWords = lineWords,
 )
+
+/** The words of each sample line, so study mode has the same rectangles the lens would find. */
+private val studyWords: Map<Int, List<ScanWord>> by lazy {
+    fun at(line: Int, surface: String, vararg entries: Entry): ScanWord {
+        val text = lensLines[line].text
+        val start = text.indexOf(surface)
+        return ScanWord(surface, start, start + surface.length, entries.toList())
+    }
+    mapOf(
+        0 to listOf(at(0, "昨日", Samples.yesterday), at(0, "友達", Samples.friend)),
+        1 to listOf(at(1, "ラーメン", Samples.ramen), at(1, "食べた", Samples.tabeta)),
+        2 to listOf(at(2, "美味しかった", Samples.oishikatta)),
+    )
+}
 
 private val selectedTabeta = ScanWord("食べた", 5, 8, listOf(Samples.tabeta))
 
 @Preview(name = "Lens highlights", widthDp = W, heightDp = H)
 @Composable
 fun LensHighlights() = Lens(lensState())
+
+@Preview(name = "Lens study", widthDp = W, heightDp = H)
+@Composable
+fun LensStudy() = Lens(
+    lensState(
+        study = true,
+        lineWords = studyWords,
+        knownWords = setOf("ラーメン"),
+    ),
+)
+
+@Preview(name = "Lens study dark", widthDp = W, heightDp = H)
+@Composable
+fun LensStudyDark() = Lens(
+    lensState(
+        study = true,
+        lineWords = studyWords,
+        knownWords = setOf("ラーメン"),
+    ),
+    dark = true,
+)
+
+@Preview(name = "Lens study word", widthDp = W, heightDp = H)
+@Composable
+fun LensStudyWord() = Lens(
+    lensState(
+        candidates = listOf(selectedTabeta),
+        selectedLine = 1,
+        study = true,
+        lineWords = studyWords,
+        knownWords = setOf("ラーメン"),
+    ),
+)
 
 @Preview(name = "Lens word", widthDp = W, heightDp = H)
 @Composable
@@ -433,6 +509,96 @@ fun LensSetup() = Frame(false) {
 fun LensSetupOn() = Frame(false) {
     LensSetupScreen(enabled = true, onOpenSettings = {}, onDone = {})
 }
+
+@Composable
+private fun Kanji(state: KanjiUiState) = Frame(false) {
+    KanjiContent(
+        state = state,
+        onBack = {},
+        onOpenWord = {},
+        onSpeak = {},
+        onSaveNote = { _, _ -> },
+    )
+}
+
+@Preview(name = "Kanji detail", widthDp = W, heightDp = 1500)
+@Composable
+fun KanjiDetailLight() = Kanji(
+    KanjiUiState(
+        character = "食",
+        details = listOf(Samples.kanji),
+        words = Samples.kanjiWords,
+        loading = false,
+    ),
+)
+
+@Preview(name = "Kanji detail dark", widthDp = W, heightDp = 1500)
+@Composable
+fun KanjiDetailDark() = Frame(true) {
+    KanjiContent(
+        state = KanjiUiState(
+            character = "食",
+            details = listOf(Samples.kanji),
+            words = Samples.kanjiWords,
+            loading = false,
+        ),
+        onBack = {},
+        onOpenWord = {},
+        onSpeak = {},
+        onSaveNote = { _, _ -> },
+    )
+}
+
+@Preview(name = "Kanji missing", widthDp = W, heightDp = H)
+@Composable
+fun KanjiMissing() = Kanji(KanjiUiState(character = "食", loading = false))
+
+@Composable
+private fun Reader(state: ReaderUiState) = Frame(false) {
+    ReaderContent(
+        state = state,
+        knownWords = setOf("ラーメン"),
+        notes = emptyMap(),
+        loadMedia = noMedia,
+        onOpenFile = {},
+        onTap = { _, _ -> },
+        onSelectCandidate = {},
+        onToggleKnown = {},
+        onExpand = {},
+        onCollapse = {},
+        onClearSelection = {},
+        onCopy = {},
+        onMine = {},
+        onSaveNote = { _, _ -> },
+        onSpeak = {},
+    )
+}
+
+@Preview(name = "Reader empty", widthDp = W, heightDp = H)
+@Composable
+fun ReaderEmpty() = Reader(ReaderUiState())
+
+@Preview(name = "Reader lines", widthDp = W, heightDp = H)
+@Composable
+fun ReaderLines() = Reader(ReaderUiState(fileName = "chapter-01.txt", lines = Samples.readerLines))
+
+@Preview(name = "Reader word", widthDp = W, heightDp = H)
+@Composable
+fun ReaderWord() = Reader(
+    ReaderUiState(
+        fileName = "chapter-01.txt",
+        lines = Samples.readerLines,
+        selectedLine = 0,
+        candidates = listOf(ScanWord("食べた", 12, 15, listOf(Samples.tabeta))),
+    ),
+)
+
+@Preview(name = "Reader unsupported file", widthDp = W, heightDp = H)
+@Composable
+fun ReaderUnsupported() = Reader(
+    ReaderUiState(error = "Choose a .txt, .srt, or .vtt file."),
+)
+
 
 @Preview(name = "Component downloading", widthDp = W, heightDp = 240)
 @Composable

@@ -10,6 +10,8 @@ import com.elianiva.jisholens.dictionary.DictionaryRecord
 import com.elianiva.jisholens.dictionary.Furigana
 import com.elianiva.jisholens.domain.Entry
 import com.elianiva.jisholens.domain.EntryTag
+import com.elianiva.jisholens.domain.KanjiDetail
+import com.elianiva.jisholens.domain.KanjiStats
 import com.elianiva.jisholens.domain.PitchAccent
 import com.elianiva.jisholens.domain.ScanWord
 import kotlinx.serialization.json.Json
@@ -51,7 +53,9 @@ internal object Samples {
     val taberareta = taberu.copy(
         termId = 2,
         deinflection = "食べさせられた",
-        deinflectionReasons = listOf("causative", "passive", "past"),
+        // The deinflector records reasons as it peels the surface back, so the last
+        // one applied, causative, is the last item in this list.
+        deinflectionReasons = listOf("past", "(unstressed infinitive)", "passive/potential", "causative"),
     )
 
     val tabeta = taberu.copy(
@@ -185,5 +189,54 @@ internal object Samples {
         ScanWord("ラーメン", 0, 4, listOf(ramen)),
         ScanWord("を", 4, 5, emptyList()),
         ScanWord("食べた", 5, 8, listOf(tabeta)),
+    )
+
+    val yesterday = taberu.copy(
+        termId = 11,
+        expression = "昨日",
+        reading = "きのう",
+        ruby = Furigana.align("昨日", "きのう"),
+        tags = listOf(EntryTag("n", "Noun")),
+        glossary = glossary("""["yesterday"]"""),
+        frequency = 620.0,
+    )
+
+    val friend = taberu.copy(
+        termId = 12,
+        expression = "友達",
+        reading = "ともだち",
+        ruby = Furigana.align("友達", "ともだち"),
+        tags = listOf(EntryTag("n", "Noun")),
+        glossary = glossary("""["friend", "companion"]"""),
+        frequency = 910.0,
+    )
+
+    val food = taberu.copy(
+        termId = 13,
+        expression = "食べ物",
+        reading = "たべもの",
+        ruby = Furigana.align("食べ物", "たべもの"),
+        tags = listOf(EntryTag("n", "Noun")),
+        glossary = glossary("""["food", "things to eat"]"""),
+        frequency = 1720.0,
+        pitch = listOf(PitchAccent(reading = "たべもの", position = 0)),
+    )
+
+    val kanji = KanjiDetail(
+        character = "食",
+        onyomi = listOf("ショク", "ジキ"),
+        kunyomi = listOf("く.う", "た.べる"),
+        meanings = glossary("""["eat", "food"]"""),
+        tags = listOf(EntryTag("jouyou", "Included in the regular-use list"), EntryTag("freq", "Frequency")),
+        dictionaryTitle = "KANJIDIC",
+        stats = KanjiStats(grade = 2, jlpt = 4, frequency = 1509, strokes = 9, radical = "食"),
+    )
+
+    val kanjiWords = listOf(taberu, food)
+
+    val readerLines = listOf(
+        "昨日、友達とラーメンを食べた。",
+        "とても美味しかった。",
+        "また行きたい。",
     )
 }
