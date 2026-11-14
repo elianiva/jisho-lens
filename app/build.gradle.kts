@@ -11,7 +11,7 @@ plugins {
 // major * 10000 + minor * 100 + patch, times 100, plus the release candidate
 // number, or 99 for the final release. So 2.0.0-rc.1 is 2000001, 2.0.0-rc.2 is
 // 2000002 and 2.0.0 is 2000099: every tag counts up from the one before it.
-val appVersionName = providers.gradleProperty("versionName").getOrElse("2.0.0-rc.1")
+val appVersionName = providers.gradleProperty("versionName").getOrElse("2.0.0-rc.2")
 val versionMatch = requireNotNull(
     Regex("""(\d+)\.(\d+)\.(\d+)(?:-rc\.(\d+))?""").matchEntire(appVersionName),
 ) {

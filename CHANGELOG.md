@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.0.0-rc.2] - 2026-11-14
+
 ### Changed
 
 - bundle the Japanese text model in the APK instead of downloading it through Google Play services, so image scanning works on a sideload
