@@ -2,9 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
-## Unreleased
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-### Features
+## [Unreleased]
+
+## [2.0.0-rc.1] - 2026-11-14
+
+### Added
 
 * add the native Kotlin and Jetpack Compose app under `app/`
 * import Yomitan dictionaries, with tags, media, frequency data, and deinflected lookup
@@ -28,7 +32,7 @@ All notable changes to this project will be documented in this file. See [standa
 * show furigana over every word in the live lens, tint unknown words, and show page coverage
 * read `.txt`, `.srt`, and `.vtt` files from the system file picker as tappable lines with the same candidates and entry sheet as the lens
 
-### Bug Fixes
+### Fixed
 
 * restore the original Jisho Lens launcher icon as an adaptive icon, with a monochrome layer for themed icons
 * segment with Kuromoji instead of one greedy longest match, so words inside a phrase, script changes, okurigana, compounds, and words that only appear conjugated stay searchable

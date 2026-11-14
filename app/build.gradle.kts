@@ -5,18 +5,24 @@ plugins {
     alias(libs.plugins.roborazzi)
 }
 
-// The release workflow passes the pushed tag, as -PversionName=1.2.3, so the
-// artifact carries the version it is released under. A build without it keeps
-// the default. versionCode follows the version, as 1.2.3 -> 10203, so every
-// release tag counts up from the one before it.
-val appVersionName = providers.gradleProperty("versionName").getOrElse("2.0.0")
-val versionParts = appVersionName.split(".")
-require(versionParts.size == 3 && versionParts.all { it.toIntOrNull() != null }) {
-    "versionName must look like 1.2.3, not $appVersionName"
+// The release workflow passes the pushed tag, as -PversionName=1.2.3 or
+// -PversionName=1.2.3-rc.1, so the artifact carries the version it is released
+// under. A build without it keeps the default. versionCode is the 1.2.3 code,
+// major * 10000 + minor * 100 + patch, times 100, plus the release candidate
+// number, or 99 for the final release. So 2.0.0-rc.1 is 2000001, 2.0.0-rc.2 is
+// 2000002 and 2.0.0 is 2000099: every tag counts up from the one before it.
+val appVersionName = providers.gradleProperty("versionName").getOrElse("2.0.0-rc.1")
+val versionMatch = Regex("""(\d+)\.(\d+)\.(\d+)(?:-rc\.(\d+))?""").matchEntire(appVersionName)
+requireNotNull(versionMatch) {
+    "versionName must look like 1.2.3 or 1.2.3-rc.1, not $appVersionName"
 }
-val (versionMajor, versionMinor, versionPatch) = versionParts.map(String::toInt)
+val (versionMajor, versionMinor, versionPatch) = versionMatch.groupValues.slice(1..3).map(String::toInt)
+val releaseCandidate = versionMatch.groupValues[4].toIntOrNull()
 require(versionMinor < 100 && versionPatch < 100) {
     "versionName minor and patch must be below 100, not $appVersionName"
+}
+require(releaseCandidate == null || releaseCandidate in 1..98) {
+    "versionName release candidate must be 1 to 98, not $appVersionName"
 }
 
 // A release is signed when the keystore and its passwords are in the
@@ -38,7 +44,8 @@ android {
         applicationId = "com.elianiva"
         minSdk = 26
         targetSdk = 37
-        versionCode = versionMajor * 10_000 + versionMinor * 100 + versionPatch
+        versionCode = (versionMajor * 10_000 + versionMinor * 100 + versionPatch) * 100 +
+            (releaseCandidate ?: 99)
         versionName = appVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
