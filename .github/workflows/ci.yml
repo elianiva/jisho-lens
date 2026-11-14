@@ -138,8 +138,12 @@ jobs:
       # test notices because they run on unminified code.
       - name: Check R8 kept Kuromoji
         run: |
-          apk="$(ls app/build/outputs/apk/stable/release/*.apk | head -1)"
-          unzip -p "$apk" 'classes*.dex' | strings -n 8 | grep -q 'com/atilika/kuromoji/ipadic/Tokenizer'
+          apk="$(find app/build/outputs/apk/stable/release -name '*.apk' -print -quit)"
+          kept="$(unzip -p "$apk" 'classes*.dex' | strings -n 8 | grep -c 'com/atilika/kuromoji/ipadic/Tokenizer' || true)"
+          if [ "$kept" -eq 0 ]; then
+            echo "::error::R8 renamed Kuromoji, so the tokenizer cannot load its dictionary."
+            exit 1
+          fi
       - uses: actions/upload-artifact@v7
         with:
           name: apks
