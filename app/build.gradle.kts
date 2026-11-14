@@ -12,8 +12,9 @@ plugins {
 // number, or 99 for the final release. So 2.0.0-rc.1 is 2000001, 2.0.0-rc.2 is
 // 2000002 and 2.0.0 is 2000099: every tag counts up from the one before it.
 val appVersionName = providers.gradleProperty("versionName").getOrElse("2.0.0-rc.1")
-val versionMatch = Regex("""(\d+)\.(\d+)\.(\d+)(?:-rc\.(\d+))?""").matchEntire(appVersionName)
-requireNotNull(versionMatch) {
+val versionMatch = requireNotNull(
+    Regex("""(\d+)\.(\d+)\.(\d+)(?:-rc\.(\d+))?""").matchEntire(appVersionName),
+) {
     "versionName must look like 1.2.3 or 1.2.3-rc.1, not $appVersionName"
 }
 val (versionMajor, versionMinor, versionPatch) = versionMatch.groupValues.slice(1..3).map(String::toInt)
