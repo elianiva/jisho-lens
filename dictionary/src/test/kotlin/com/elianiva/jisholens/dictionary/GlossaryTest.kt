@@ -51,6 +51,20 @@ class GlossaryTest {
     }
 
     @Test
+    fun `drops example sentences and attribution`() {
+        val json = """
+            [{"type":"structured-content","content":[
+                {"tag":"ul","data":{"content":"glossary"},"content":[{"tag":"li","content":"apple (fruit)"}]},
+                {"tag":"div","data":{"content":"extra-info"},"content":[
+                    {"tag":"div","content":"I bought an apple at the market."}
+                ]},
+                {"tag":"div","data":{"content":"attribution"},"content":"JMdict | Tatoeba"}
+            ]}]
+        """.trimIndent()
+        assertEquals("apple (fruit)", Glossary.text(json))
+    }
+
+    @Test
     fun `keeps spaces between latin words and around mixed text`() {
         assertEquals("to eat 食 now", Glossary.text("""[{"type":"structured-content","content":["to eat","食","now"]}]"""))
     }

@@ -109,7 +109,7 @@ private fun BlockElement(
     when (tag) {
         "ul", "ol" -> {
             Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                (content as? JsonArray)?.forEachIndexed { index, child ->
+                childrenOf(content).forEachIndexed { index, child ->
                     val item = child as? JsonObject
                     Row(modifier = Modifier.fillMaxWidth()) {
                         Text(
@@ -149,7 +149,7 @@ private fun BlockElement(
         }
         "details" -> {
             Column(modifier) {
-                (content as? JsonArray)?.forEach { child ->
+                childrenOf(content).forEach { child ->
                     GlossaryContent(child, dictionaryId, loadMedia, onQuery)
                 }
             }
@@ -170,10 +170,10 @@ private fun TableElement(
     onQuery: (String) -> Unit,
     modifier: Modifier,
 ) {
-    val rows = (element["content"] as? JsonArray).orEmpty()
+    val rows = childrenOf(element["content"])
     Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
         rows.forEach { row ->
-            val cells = ((row as? JsonObject)?.get("content") as? JsonArray).orEmpty()
+            val cells = childrenOf((row as? JsonObject)?.get("content"))
             Row(Modifier.fillMaxWidth()) {
                 cells.forEach { cell ->
                     GlossaryContent(
@@ -223,6 +223,13 @@ private fun isBlock(element: JsonElement): Boolean = when (element) {
     is JsonObject -> tagOf(element) in blockTags ||
         (tagOf(element).isEmpty() && element["content"]?.let(::isBlock) == true)
     else -> false
+}
+
+/** Structured content lets `content` be one element instead of an array, so list and table code reads both. */
+private fun childrenOf(content: JsonElement?): List<JsonElement> = when (content) {
+    null, JsonNull -> emptyList()
+    is JsonArray -> content
+    else -> listOf(content)
 }
 
 private fun tagOf(element: JsonObject): String =

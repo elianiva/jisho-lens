@@ -2,7 +2,10 @@ package com.elianiva.jisholens.dictionary
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 
 /** Keeps both IN lists of a chunk below SQLite's bound-variable limit. */
 private const val QUERY_CHUNK = 400
@@ -275,7 +278,8 @@ class DictionaryLookup(private val database: SqliteDatabase) {
         val value = query.trim()
         if (value.isEmpty() || limit <= 0) return emptyList()
         val match = FtsText.buildQuery(value) ?: return emptyList()
-        val exact = queryFts(match, limit)
+        val latin = value.none { FtsText.isJapanese(it.code) }
+        val exact = if (latin) rankByGloss(value, queryFts(match, minOf(limit * 3, 150))).take(limit) else queryFts(match, limit)
         if (exact.size >= limit) return exact
         val deinflections = deinflector.deinflect(value)
             .filter { DeinflectionTags.isDictionaryForm(it.tags) }
@@ -301,6 +305,69 @@ class DictionaryLookup(private val database: SqliteDatabase) {
             }
         }
         return exact + extra
+    }
+
+    /**
+     * FTS finds every entry that mentions the words, in dictionary order, so a word whose
+     * ninth sense mentions "apple" can precede 林檎. Inside each dictionary an entry whose
+     * sense is the query ("apple (fruit)") goes before one that starts with it, and that
+     * before one that only contains it. A dictionary's priority still decides the order
+     * between dictionaries, and ties keep the score order the query already gave.
+     */
+    private fun rankByGloss(query: String, results: List<TermResult>): List<TermResult> {
+        val wanted = query.trim().lowercase()
+        val word = Regex("(?<![\\p{L}\\p{N}])" + Regex.escape(wanted) + "(?![\\p{L}\\p{N}])")
+        fun rank(result: TermResult): Int {
+            val senses = ArrayList<String>()
+            senseItems(result.glossary, senses)
+            var best = Int.MAX_VALUE
+            for ((index, sense) in senses.withIndex()) {
+                val text = sense.lowercase().trim()
+                val bare = text.substringBefore(" (").trim().removePrefix("to ")
+                val tier = when {
+                    text == wanted || bare == wanted -> 0
+                    text.startsWith(wanted) -> 1
+                    word.containsMatchIn(text) -> 2
+                    else -> continue
+                }
+                best = minOf(best, tier * 1000 + index)
+            }
+            return best
+        }
+        return results
+            .groupByTo(LinkedHashMap()) { it.dictionaryId }
+            .values
+            .flatMap { group -> group.sortedBy(::rank) }
+    }
+
+    /** The sense strings of a glossary: plain strings, or the items of Jitendex's `glossary` lists. */
+    private fun senseItems(glossary: JsonElement, out: MutableList<String>) {
+        when (glossary) {
+            is JsonArray -> glossary.forEach { senseItems(it, out) }
+            is JsonPrimitive -> if (glossary.isString) out.add(glossary.content)
+            is JsonObject -> collectGlossaryLists(glossary, out)
+            else -> Unit
+        }
+    }
+
+    private fun collectGlossaryLists(element: JsonElement, out: MutableList<String>) {
+        when (element) {
+            is JsonArray -> element.forEach { collectGlossaryLists(it, out) }
+            is JsonObject -> {
+                val marker = ((element["data"] as? JsonObject)?.get("content") as? JsonPrimitive)?.contentOrNull
+                val content = element["content"]
+                when {
+                    marker == "glossary" -> when (content) {
+                        is JsonArray -> content.forEach { out.add(Glossary.text(it)) }
+                        null -> Unit
+                        else -> out.add(Glossary.text(content))
+                    }
+                    marker == "extra-info" || marker == "attribution" -> Unit
+                    content != null -> collectGlossaryLists(content, out)
+                }
+            }
+            else -> Unit
+        }
     }
 
     private fun queryExact(value: String, limit: Int): List<TermResult> {

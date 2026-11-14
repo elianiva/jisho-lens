@@ -17,6 +17,7 @@ object Glossary {
     private val htmlTag = Regex("<[^>]*>")
     private val ignoredKeys = listOf("tag", "type", "style", "path", "lang", "data", "class", "href", "title")
     private val readingTags = setOf("rt", "rp")
+    private val droppedSections = setOf("extra-info", "attribution", "attribution-footnote")
     private val blockTags = setOf("li", "div", "p", "tr", "td", "th", "summary", "br")
 
     fun text(glossary: JsonElement): String = text(glossary.toString())
@@ -99,9 +100,12 @@ object Glossary {
                     if (isKey(json, index, end)) {
                         val container = containers.lastOrNull()
                         if (container != null && container.isObject) {
-                            // A ruby reading repeats the base text, so a plain-text gloss drops it.
+                            // A ruby reading repeats the base text, and an example or attribution
+                            // block is not a sense, so a plain-text gloss drops their content.
+                            val isContent = matchesKey(json, stringStart, index, "content")
                             container.keySuppressed = isIgnoredKey(json, stringStart, index) ||
-                                (container.tag in readingTags && matchesKey(json, stringStart, index, "content"))
+                                (isContent && (container.tag in readingTags || container.dropContent))
+                            container.contentKeyPending = isContent
                             container.tagPending = matchesKey(json, stringStart, index, "tag")
                         }
                     } else {
@@ -114,8 +118,16 @@ object Glossary {
                             if (container.tagPending && index - stringStart <= 32) {
                                 container.tag = decode(json, stringStart, index)
                             }
+                            // `data: {"content": "extra-info"}` marks its parent element, whose own
+                            // content follows the data key.
+                            if (container.contentKeyPending && containers.size >= 2 && index - stringStart <= 32 &&
+                                decode(json, stringStart, index) in droppedSections
+                            ) {
+                                containers[containers.size - 2].dropContent = true
+                            }
                             container.keySuppressed = false
                             container.tagPending = false
+                            container.contentKeyPending = false
                         }
                     }
                 }
@@ -279,6 +291,8 @@ object Glossary {
     private class Container(val isObject: Boolean, val suppressed: Boolean) {
         var keySuppressed = false
         var tagPending = false
+        var contentKeyPending = false
+        var dropContent = false
         var tag: String? = null
     }
 }
