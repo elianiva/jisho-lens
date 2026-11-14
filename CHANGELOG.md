@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.0.0-rc.3] - 2026-11-14
+
+### Fixed
+
+- keep Kuromoji's package name through R8. The release build renamed it, the tokenizer could not find its dictionary, and it fell back to one token per character, so compounds such as 縦型 and 時間 ranked below their first character
+- place the lens buttons and the entry sheet inside the status bar and the navigation bar. An accessibility overlay receives no system insets, so the buttons sat on top of the clock and the app's bottom bar
+- drop ruby readings and tooltip titles from the one-paragraph gloss, and stop splitting Japanese sentences with spaces, so an example reads 読書の時間 instead of 読どく書しょの時じ間かん
+
+### Changed
+
+- dim the page while an entry is open, with a gradient behind the buttons and the actions, like Google Lens
+- highlight each line with a soft fill instead of an underline. Only the active word, or the active line when it has no word, gets a border
+
 ## [2.0.0-rc.2] - 2026-11-14
 
 ### Changed

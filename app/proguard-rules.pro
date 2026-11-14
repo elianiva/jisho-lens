@@ -12,3 +12,10 @@
 -keepclassmembers class com.elianiva.jisholens.dictionary.** {
     *** Companion;
 }
+
+# Kuromoji reads its dictionary with Class.getResourceAsStream, relative to its
+# own package. R8 renaming that package makes the lookup fail, and the
+# tokenizer then falls back to one token per character.
+-keep class com.atilika.kuromoji.** { *; }
+-keeppackagenames com.atilika.kuromoji.**
+-dontwarn com.atilika.kuromoji.**

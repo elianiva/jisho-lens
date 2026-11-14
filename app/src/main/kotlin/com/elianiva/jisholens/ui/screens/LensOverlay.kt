@@ -1,6 +1,7 @@
 package com.elianiva.jisholens.ui.screens
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -8,6 +9,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,10 +17,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
@@ -45,8 +51,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.input.pointer.pointerInput
@@ -83,7 +89,7 @@ import kotlin.math.abs
 /**
  * The live lens over another app.
  *
- * The page stays where it is: the overlay is transparent and only draws an underline
+ * The page stays where it is: the overlay is transparent and only draws a soft highlight
  * under Japanese lines plus the selected word's box. Tapping a word slides its entry
  * up from the bottom; the page is not replaced by a screenshot at any point.
  *
@@ -111,6 +117,9 @@ fun LensOverlayContent(
     onSaveNote: ((String, String) -> Unit)? = null,
     onSpeak: ((String) -> Unit)? = null,
     onToggleStudy: () -> Unit = {},
+    // The overlay window gets no system insets from Android, so the host measures
+    // them and passes them in.
+    insets: WindowInsets = WindowInsets.systemBars,
 ) {
     if (state.expanded) {
         ExpandedEntrySheet(
@@ -128,7 +137,21 @@ fun LensOverlayContent(
     var sheetTop by remember { mutableFloatStateOf(Float.POSITIVE_INFINITY) }
     var topBarBottom by remember { mutableFloatStateOf(0f) }
 
-    Box(modifier.fillMaxSize()) {
+    val kind = when {
+        state.message != null -> SheetKind.Message
+        state.scanning -> SheetKind.Loading
+        state.lookingUp -> SheetKind.Lookup
+        state.candidates.isNotEmpty() -> SheetKind.Word
+        state.selectedLine >= 0 -> SheetKind.NoEntry
+        else -> SheetKind.Hint
+    }
+    // Like Google Lens, the page dims while the sheet is open, so the sheet and its
+    // actions read against any app instead of floating over its text.
+    val dim by animateFloatAsState(if (kind == SheetKind.Hint) 0f else 0.32f, label = "lens-dim")
+    var rootHeight by remember { mutableFloatStateOf(0f) }
+
+    Box(modifier.fillMaxSize().onSizeChanged { rootHeight = it.height.toFloat() }) {
+        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = dim)))
         HighlightLayer(
             state = state,
             screenSize = screenSize,
@@ -139,7 +162,25 @@ fun LensOverlayContent(
             sheetTop = sheetTop,
             topBarBottom = topBarBottom,
         )
+        Box(
+            Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .height(with(LocalDensity.current) { (topBarBottom.toDp() + 24.dp) })
+                .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.5f), Color.Transparent))),
+        )
+        if (kind != SheetKind.Hint && sheetTop.isFinite() && rootHeight > 0f) {
+            val surface = MaterialTheme.colorScheme.surface
+            Box(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(with(LocalDensity.current) { (rootHeight - sheetTop).toDp() + 48.dp })
+                    .background(Brush.verticalGradient(listOf(Color.Transparent, surface.copy(alpha = 0.94f)), startY = 0f)),
+            )
+        }
         LensTopBar(
+            insets = insets,
             canReadImage = state.canReadImage,
             busy = state.scanning,
             study = state.study,
@@ -155,18 +196,10 @@ fun LensOverlayContent(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .navigationBarsPadding()
+                .windowInsetsPadding(insets.only(WindowInsetsSides.Bottom))
                 .padding(horizontal = 16.dp, vertical = 16.dp)
                 .onGloballyPositioned { sheetTop = it.positionInWindow().y },
         ) {
-            val kind = when {
-                state.message != null -> SheetKind.Message
-                state.scanning -> SheetKind.Loading
-                state.lookingUp -> SheetKind.Lookup
-                state.candidates.isNotEmpty() -> SheetKind.Word
-                state.selectedLine >= 0 -> SheetKind.NoEntry
-                else -> SheetKind.Hint
-            }
             AnimatedContent(
                 targetState = kind,
                 transitionSpec = {
@@ -214,7 +247,7 @@ fun LensOverlayContent(
     }
 }
 
-/** The transparent highlight plane: one thin underline per Japanese line, a box for the selection. */
+/** The transparent highlight plane: a soft fill per Japanese line, a bordered box for the active selection. */
 @Composable
 private fun HighlightLayer(
     state: LensUiState,
@@ -226,8 +259,7 @@ private fun HighlightLayer(
 ) {
     val accent = MaterialTheme.colorScheme.primary
     val density = LocalDensity.current
-    val underline = with(density) { 2.dp.toPx() }
-    val shadow = with(density) { 5.dp.toPx() }
+    val border = with(density) { 2.dp.toPx() }
     val textMeasurer = rememberTextMeasurer()
     var canvas by remember { mutableStateOf(IntSize.Zero) }
 
@@ -272,39 +304,26 @@ private fun HighlightLayer(
             translate(origin.x, origin.y)
             scale(scaleX = base, scaleY = base, pivot = Offset.Zero)
         }) {
+            // Every line is a soft filled highlight, like Google Lens. A border marks only the
+            // active target: the selected word, or the selected line when it has no word.
             state.lines.forEachIndexed { index, line ->
-                val left = line.rect.left.toFloat()
-                val right = line.rect.right.toFloat()
-                val bottom = line.rect.bottom.toFloat()
-                if (right <= left) return@forEachIndexed
-                if (index == state.selectedLine) {
-                    drawRoundRect(
-                        color = accent.copy(alpha = 0.10f),
-                        topLeft = Offset(left - 4f, line.rect.top - 4f),
-                        size = Size(line.rect.width() + 8f, line.rect.height() + 8f),
-                        cornerRadius = CornerRadius(10f),
-                    )
+                if (line.rect.width() <= 0) return@forEachIndexed
+                val selected = index == state.selectedLine
+                val topLeft = Offset(line.rect.left - 4f, line.rect.top - 4f)
+                val size = Size(line.rect.width() + 8f, line.rect.height() + 8f)
+                drawRoundRect(
+                    color = accent.copy(alpha = if (selected) 0.20f else 0.18f),
+                    topLeft = topLeft,
+                    size = size,
+                    cornerRadius = CornerRadius(10f),
+                )
+                if (selected && state.wordBox == null) {
                     drawRoundRect(
                         color = accent,
-                        topLeft = Offset(left - 4f, line.rect.top - 4f),
-                        size = Size(line.rect.width() + 8f, line.rect.height() + 8f),
+                        topLeft = topLeft,
+                        size = size,
                         cornerRadius = CornerRadius(10f),
-                        style = Stroke(width = underline),
-                    )
-                } else {
-                    drawLine(
-                        color = Color.Black.copy(alpha = 0.35f),
-                        start = Offset(left, bottom),
-                        end = Offset(right, bottom),
-                        strokeWidth = shadow,
-                        cap = StrokeCap.Round,
-                    )
-                    drawLine(
-                        color = accent,
-                        start = Offset(left, bottom),
-                        end = Offset(right, bottom),
-                        strokeWidth = underline,
-                        cap = StrokeCap.Round,
+                        style = Stroke(width = border),
                     )
                 }
             }
@@ -320,7 +339,7 @@ private fun HighlightLayer(
                     topLeft = Offset(box.left - 3f, box.top - 3f),
                     size = Size(box.width() + 6f, box.height() + 6f),
                     cornerRadius = CornerRadius(8f),
-                    style = Stroke(width = underline),
+                    style = Stroke(width = border),
                 )
             }
             if (state.study) {
@@ -366,6 +385,7 @@ private fun HighlightLayer(
 
 @Composable
 private fun LensTopBar(
+    insets: WindowInsets,
     canReadImage: Boolean,
     busy: Boolean,
     study: Boolean,
@@ -384,7 +404,10 @@ private fun LensTopBar(
         contentColor = if (study) MaterialTheme.colorScheme.onPrimary else Color.White,
     )
     Row(
-        modifier = modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .windowInsetsPadding(insets.only(WindowInsetsSides.Top))
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {

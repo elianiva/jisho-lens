@@ -133,6 +133,13 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
       - name: Build
         run: ./gradlew :app:assemblePreviewDebug :app:assembleStableRelease :app:bundleStableRelease --console=plain
+      # Kuromoji reads its dictionary relative to its own package. If R8 renames the
+      # package, the tokenizer falls back to one token per character, and no unit
+      # test notices because they run on unminified code.
+      - name: Check R8 kept Kuromoji
+        run: |
+          apk="$(ls app/build/outputs/apk/stable/release/*.apk | head -1)"
+          unzip -p "$apk" 'classes*.dex' | strings -n 8 | grep -q 'com/atilika/kuromoji/ipadic/Tokenizer'
       - uses: actions/upload-artifact@v7
         with:
           name: apks

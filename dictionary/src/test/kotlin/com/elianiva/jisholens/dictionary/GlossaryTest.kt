@@ -37,6 +37,25 @@ class GlossaryTest {
     }
 
     @Test
+    fun `drops ruby readings and tooltips`() {
+        val json = """
+            [{"type":"structured-content","content":[
+                {"tag":"span","title":"noun (common)","content":"noun"},
+                "time;",
+                {"tag":"ruby","content":["読",{"tag":"rt","content":"どく"}]},
+                {"tag":"ruby","content":["書",{"tag":"rt","content":"しょ"}]},
+                "の時間"
+            ]}]
+        """.trimIndent()
+        assertEquals("noun time; 読書の時間", Glossary.text(json))
+    }
+
+    @Test
+    fun `keeps spaces between latin words and around mixed text`() {
+        assertEquals("to eat 食 now", Glossary.text("""[{"type":"structured-content","content":["to eat","食","now"]}]"""))
+    }
+
+    @Test
     fun `keeps image alt text`() {
         val json = """[{"type":"image","path":"img/picture.png","width":100,"alt":"a picture"}]"""
         assertEquals("a picture", Glossary.text(json))

@@ -15,7 +15,8 @@ import kotlinx.serialization.json.contentOrNull
  */
 object Glossary {
     private val htmlTag = Regex("<[^>]*>")
-    private val ignoredKeys = listOf("tag", "type", "style", "path", "lang", "data", "class", "href")
+    private val ignoredKeys = listOf("tag", "type", "style", "path", "lang", "data", "class", "href", "title")
+    private val readingTags = setOf("rt", "rp")
     private val blockTags = setOf("li", "div", "p", "tr", "td", "th", "summary", "br")
 
     fun text(glossary: JsonElement): String = text(glossary.toString())
@@ -98,7 +99,9 @@ object Glossary {
                     if (isKey(json, index, end)) {
                         val container = containers.lastOrNull()
                         if (container != null && container.isObject) {
-                            container.keySuppressed = isIgnoredKey(json, stringStart, index)
+                            // A ruby reading repeats the base text, so a plain-text gloss drops it.
+                            container.keySuppressed = isIgnoredKey(json, stringStart, index) ||
+                                (container.tag in readingTags && matchesKey(json, stringStart, index, "content"))
                             container.tagPending = matchesKey(json, stringStart, index, "tag")
                         }
                     } else {
@@ -248,23 +251,24 @@ object Glossary {
     /** Collapses runs of whitespace in place and returns the trimmed text. */
     private fun collapse(builder: StringBuilder): String {
         var write = 0
-        var lastWasSpace = true
+        var pendingSpace = false
         val length = builder.length
         for (read in 0 until length) {
             val character = builder[read]
             if (character == ' ' || character == '\n' || character == '\r' || character == '\t' ||
                 character == '\u0000' || character == '\u000B' || character == '\u000C'
             ) {
-                if (!lastWasSpace) {
-                    builder.setCharAt(write++, ' ')
-                    lastWasSpace = true
-                }
+                pendingSpace = write > 0
             } else {
+                // Each string leaf ends in a space, which would split a sentence that
+                // ruby markup cut into pieces. Japanese does not use spaces between words.
+                if (pendingSpace && !(FtsText.isJapanese(builder[write - 1].code) && FtsText.isJapanese(character.code))) {
+                    builder.setCharAt(write++, ' ')
+                }
+                pendingSpace = false
                 builder.setCharAt(write++, character)
-                lastWasSpace = false
             }
         }
-        if (write > 0 && builder[write - 1] == ' ') write--
         if (write > 0 && builder[write - 1] == ';') {
             write--
             while (write > 0 && builder[write - 1] == ' ') write--

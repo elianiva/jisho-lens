@@ -12,6 +12,7 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.ComposeView
@@ -58,6 +59,7 @@ class LensOverlayHost(
     private val savedState = SavedStateRegistryController.create(this)
     private val store = ViewModelStore()
     private val screenSize = mutableStateOf(displaySize())
+    private val systemInsets = mutableStateOf(measureInsets())
     private val refresh = Runnable { presenter?.refresh() }
     private val start = Runnable { presenter?.start() }
 
@@ -99,6 +101,7 @@ class LensOverlayHost(
                 val settings by container.settings.settings.collectAsStateWithLifecycle(initialValue = null)
                 val state by lens.state.collectAsStateWithLifecycle()
                 val size by screenSize
+                val bars by systemInsets
                 val voiceAvailable by voice.available.collectAsStateWithLifecycle()
                 JishoLensTheme(
                     darkTheme = settings?.theme?.isDark(isSystemInDarkTheme()) ?: false,
@@ -107,6 +110,7 @@ class LensOverlayHost(
                     LensOverlayContent(
                         state = state,
                         screenSize = size,
+                        insets = WindowInsets(top = bars.first, bottom = bars.second),
                         loadMedia = container.repository::media,
                         onTap = lens::onTap,
                         onSelectCandidate = lens::selectCandidate,
@@ -186,6 +190,7 @@ class LensOverlayHost(
 
     fun onConfigurationChanged() {
         screenSize.value = displaySize()
+        systemInsets.value = measureInsets()
         scheduleRefresh()
     }
 
@@ -203,6 +208,23 @@ class LensOverlayHost(
     private fun displaySize(): IntSize {
         val bounds = service.displayBounds()
         return IntSize(bounds.width(), bounds.height())
+    }
+
+    /**
+     * The status bar and navigation bar heights, in pixels. An accessibility overlay
+     * that ignores window limits receives no insets, so the lens reads the sizes the
+     * system publishes instead. Gesture navigation only reserves a thin strip.
+     */
+    private fun measureInsets(): Pair<Int, Int> {
+        val resources = service.resources
+        fun dimen(name: String): Int {
+            val id = resources.getIdentifier(name, "dimen", "android")
+            return if (id > 0) resources.getDimensionPixelSize(id) else 0
+        }
+        val modeId = resources.getIdentifier("config_navBarInteractionMode", "integer", "android")
+        val gestures = modeId > 0 && resources.getInteger(modeId) == GESTURE_NAVIGATION
+        val bottom = if (gestures) dimen("navigation_bar_gesture_height") else dimen("navigation_bar_height")
+        return dimen("status_bar_height") to bottom
     }
 
     private fun windowParams(): WindowManager.LayoutParams =
@@ -232,5 +254,6 @@ class LensOverlayHost(
         const val REFRESH_DELAY_MILLIS = 350L
         const val HIDE_FOR_SCREENSHOT_MILLIS = 120L
         const val START_DELAY_MILLIS = 150L
+        const val GESTURE_NAVIGATION = 2
     }
 }
