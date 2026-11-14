@@ -65,7 +65,7 @@ jobs:
       - name: Name the APK after its version and date
         id: apk
         run: |
-          built="app/build/outputs/apk/preview/debug/app-preview-universal-debug.apk"
+          built="app/build/outputs/apk/preview/debug/app-preview-debug.apk"
           version="$("$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest version-name "$built")"
           version="${version%-preview}"
           date="$(date -u +%Y-%m-%d)"

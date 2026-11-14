@@ -51,6 +51,10 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
+
+        // The OCR model and SQLite ship native code per ABI. Phones are 64-bit
+        // ARM, so the APK carries only that and stays small.
+        ndk { abiFilters += "arm64-v8a" }
     }
 
     flavorDimensions += "channel"
@@ -87,17 +91,6 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-        }
-    }
-
-    // The OCR model ships in the APK, so each ABI gets its own APK to keep the
-    // download small. The universal APK covers a device that is none of these.
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            include("arm64-v8a", "armeabi-v7a", "x86_64")
-            isUniversalApk = true
         }
     }
 

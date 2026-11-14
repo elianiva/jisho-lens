@@ -9,7 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Changed
 
 - bundle the Japanese text model in the APK instead of downloading it through Google Play services, so image scanning works on a sideload
-- publish one APK per ABI (`arm64-v8a`, `armeabi-v7a`, `x86_64`) and a universal APK
+- ship native code for `arm64-v8a` only, which keeps the APK small now that it carries the OCR model
 
 ## [2.0.0-rc.1] - 2026-11-14
 

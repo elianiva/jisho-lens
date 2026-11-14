@@ -151,24 +151,20 @@ jobs:
         env:
           VERSION: ${{ needs.gate.outputs.version }}
         run: |
-          for abi in arm64-v8a armeabi-v7a x86_64 universal; do
-            apk="app/build/outputs/apk/stable/release/app-stable-$abi-release.apk"
-            "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs "$apk"
-            built="$("$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest version-name "$apk")"
-            if [ "$built" != "$VERSION" ]; then
-              echo "::error::The $abi APK has version $built, but the tag is $VERSION."
-              exit 1
-            fi
-          done
+          apk="app/build/outputs/apk/stable/release/app-stable-release.apk"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs "$apk"
+          built="$("$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest version-name "$apk")"
+          if [ "$built" != "$VERSION" ]; then
+            echo "::error::The APK has version $built, but the tag is $VERSION."
+            exit 1
+          fi
 
       - name: Name the artifacts after the version
         env:
           VERSION: ${{ needs.gate.outputs.version }}
         run: |
           mkdir -p dist
-          for abi in arm64-v8a armeabi-v7a x86_64 universal; do
-            cp "app/build/outputs/apk/stable/release/app-stable-$abi-release.apk" "dist/jisho-lens-$VERSION-$abi.apk"
-          done
+          cp app/build/outputs/apk/stable/release/app-stable-release.apk "dist/jisho-lens-$VERSION.apk"
           cp app/build/outputs/bundle/stableRelease/app-stable-release.aab "dist/jisho-lens-$VERSION.aab"
           ls -la dist
       - uses: actions/upload-artifact@v7
