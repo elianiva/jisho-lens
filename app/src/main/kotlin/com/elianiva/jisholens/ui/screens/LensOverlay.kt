@@ -9,6 +9,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -53,12 +54,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
@@ -120,6 +123,8 @@ fun LensOverlayContent(
     // The overlay window gets no system insets from Android, so the host measures
     // them and passes them in.
     insets: WindowInsets = WindowInsets.systemBars,
+    // The screen as it was when the lens opened. Without it the lens draws over the live page.
+    frozen: ImageBitmap? = null,
 ) {
     if (state.expanded) {
         ExpandedEntrySheet(
@@ -151,6 +156,14 @@ fun LensOverlayContent(
     var rootHeight by remember { mutableFloatStateOf(0f) }
 
     Box(modifier.fillMaxSize().onSizeChanged { rootHeight = it.height.toFloat() }) {
+        if (frozen != null) {
+            Image(
+                bitmap = frozen,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.FillBounds,
+            )
+        }
         Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = dim)))
         HighlightLayer(
             state = state,

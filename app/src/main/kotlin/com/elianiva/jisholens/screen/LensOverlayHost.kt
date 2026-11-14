@@ -2,6 +2,7 @@ package com.elianiva.jisholens.screen
 
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.graphics.Bitmap
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.Handler
@@ -15,6 +16,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.unit.IntSize
@@ -66,6 +68,7 @@ class LensOverlayHost(
     private var view: ComposeView? = null
     private var presenter: LensPresenter? = null
     private var speaker: TextSpeaker? = null
+    private var frozen: Bitmap? = null
 
     private val reader = LensNodeReader(service, container.ocr, this)
 
@@ -79,8 +82,12 @@ class LensOverlayHost(
         savedState.performRestore(null)
     }
 
-    fun show(): Boolean {
+    /** The screenshot the lens freezes, or null when the lens has to stay live. Call before [show]. */
+    suspend fun freeze(): Bitmap? = reader.freeze()
+
+    fun show(frozenPage: Bitmap? = null): Boolean {
         if (view != null) return true
+        frozen = frozenPage
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
         val lens = LensPresenter(
             repository = container.repository,
@@ -88,10 +95,12 @@ class LensOverlayHost(
             notes = container.notes,
             reader = reader,
             onDismiss = ::hide,
+            frozen = frozenPage != null,
         )
         presenter = lens
         val voice = TextSpeaker(service)
         speaker = voice
+        val page = frozenPage?.asImageBitmap()
         val compose = ComposeView(themedContext).apply {
             setViewTreeLifecycleOwner(this@LensOverlayHost)
             setViewTreeViewModelStoreOwner(this@LensOverlayHost)
@@ -110,6 +119,7 @@ class LensOverlayHost(
                     LensOverlayContent(
                         state = state,
                         screenSize = size,
+                        frozen = page,
                         insets = WindowInsets(top = bars.first, bottom = bars.second),
                         loadMedia = container.repository::media,
                         onTap = lens::onTap,
@@ -141,6 +151,8 @@ class LensOverlayHost(
             windowManager.addView(compose, windowParams())
         }.isSuccess
         if (!added) {
+            frozen?.recycle()
+            frozen = null
             lens.close()
             voice.close()
             speaker = null
@@ -169,6 +181,8 @@ class LensOverlayHost(
         speaker?.close()
         speaker = null
         runCatching { windowManager.removeView(compose) }
+        frozen?.recycle()
+        frozen = null
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
@@ -179,12 +193,13 @@ class LensOverlayHost(
 
     /** A window changed under the lens: read it again shortly, without fighting a live selection. */
     fun scheduleRefresh() {
-        if (view == null) return
+        if (view == null || frozen != null) return
         handler.removeCallbacks(refresh)
         handler.postDelayed(refresh, REFRESH_DELAY_MILLIS)
     }
 
     fun onWindowChanged() {
+        if (frozen != null) return
         presenter?.onWindowChanged()
     }
 

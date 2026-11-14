@@ -11,8 +11,9 @@ import com.elianiva.jisholens.R
 /**
  * The way in while another app is on screen.
  *
- * With live reading already granted, the tile opens [LensTriggerActivity] so the shade
- * has time to collapse before the overlay reads the page. Without the grant it opens
+ * With live reading running on Android 12 or later, the tile asks the service to close
+ * the shade and open the lens, with no activity in between. On older versions it opens
+ * [LensTriggerActivity] so the shade has time to collapse. Without the grant it opens
  * the disclosure and the system accessibility settings once; after that the tile does
  * not ask again.
  */
@@ -28,6 +29,11 @@ class LensTileService : TileService() {
 
     override fun onClick() {
         super.onClick()
+        val service = LensAccessibilityService.instance
+        if (service != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            service.openFromTile()
+            return
+        }
         val intent = if (LensAccessibilityService.isEnabled(this)) {
             LensTriggerActivity.intent(this)
         } else {

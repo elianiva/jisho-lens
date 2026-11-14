@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.0.0-rc.4] - 2026-11-14
+
+### Added
+
+- add Rebuild search index to a dictionary's menu. It rebuilds the English search from the glossaries already on the device, so a dictionary imported before the search fixes needs no re-download
+
+### Changed
+
+- freeze the screen when the lens opens, like Google Lens: the tile takes one screenshot, dims it, and draws the words on it. Taps select words only, and Close returns to the app. Where the device cannot take a screenshot, the lens stays live
+- open the lens straight from the Quick Settings tile on Android 12 and later, without flashing the Jisho Lens app
+
+### Fixed
+
+- show the senses of entries that have a single part-of-speech group, such as 皮, which rendered empty
+- rank English search by the sense that matches the query, and leave example sentences out of the index, so apple leads with 林檎
+
 ## [2.0.0-rc.3] - 2026-11-14
 
 ### Fixed

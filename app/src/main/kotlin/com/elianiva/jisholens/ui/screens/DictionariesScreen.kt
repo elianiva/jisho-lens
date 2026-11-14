@@ -38,6 +38,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -128,6 +129,13 @@ fun DictionariesScreen(
                 container.refreshDictionaries()
             }
         },
+        onReindex = { dictionary ->
+            scope.launch {
+                snackbar.showSnackbar("Rebuilding the search index for ${dictionary.title}…")
+                val count = runCatching { container.repository.reindex(dictionary.id) }.getOrNull()
+                snackbar.showSnackbar(if (count != null) "Search index rebuilt: $count entries" else "Rebuild failed")
+            }
+        },
         onDelete = { pendingDelete = it },
     )
 
@@ -169,6 +177,7 @@ fun DictionariesContent(
     onEnabled: (DictionaryRecord, Boolean) -> Unit,
     onMove: (DictionaryRecord, Int) -> Unit,
     onDelete: (DictionaryRecord) -> Unit,
+    onReindex: (DictionaryRecord) -> Unit = {},
 ) {
     var addMenu by remember { mutableStateOf(false) }
     var catalogue by remember { mutableStateOf(false) }
@@ -296,6 +305,7 @@ fun DictionariesContent(
                         onEnabled = { onEnabled(dictionary, it) },
                         onMove = { onMove(dictionary, it) },
                         onDelete = { onDelete(dictionary) },
+                        onReindex = { onReindex(dictionary) },
                     )
                 }
             }
@@ -311,6 +321,7 @@ private fun DictionaryRow(
     onEnabled: (Boolean) -> Unit,
     onMove: (Int) -> Unit,
     onDelete: () -> Unit,
+    onReindex: () -> Unit,
 ) {
     val shapes = DictionaryShapes
     var menu by remember { mutableStateOf(false) }
@@ -362,6 +373,11 @@ private fun DictionaryRow(
                             enabled = index < count - 1,
                             leadingIcon = { Icon(Icons.Rounded.ArrowDownward, contentDescription = null) },
                             onClick = { menu = false; onMove(1) },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Rebuild search index") },
+                            leadingIcon = { Icon(Icons.Rounded.Refresh, contentDescription = null) },
+                            onClick = { menu = false; onReindex() },
                         )
                         DropdownMenuItem(
                             text = { Text("Remove") },

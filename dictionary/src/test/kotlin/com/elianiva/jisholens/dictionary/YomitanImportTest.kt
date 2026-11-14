@@ -10,6 +10,19 @@ import kotlin.test.assertTrue
 
 class YomitanImportTest {
     @Test
+    fun `reindex rebuilds the search index from stored glossaries`() {
+        Fixtures.database().use { database ->
+            Fixtures.archive(version3Files()).use { YomitanImporter(database).import(it) }
+            val id = DictionaryStore(database).list().single().id
+            fun indexed() = database.query("SELECT rowid, expression, reading, gloss FROM terms_fts ORDER BY rowid")
+            val before = indexed()
+            database.execute("DELETE FROM terms_fts")
+            assertEquals(5, FtsReindexer(database).reindex(id))
+            assertEquals(before, indexed())
+        }
+    }
+
+    @Test
     fun `imports every bank`() {
         Fixtures.database().use { database ->
             Fixtures.archive(version3Files()).use { archive ->

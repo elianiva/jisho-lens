@@ -108,6 +108,31 @@ class LensNodeReader(
         }
     }
 
+    /**
+     * A screenshot of the whole display, taken before the overlay exists so the lens can
+     * show it frozen. Null when the device cannot capture, the window is protected, or
+     * the capture fails; the lens then stays live over the page.
+     */
+    suspend fun freeze(): Bitmap? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R || !canReadImages) return null
+        return try {
+            val result = capture { executor, callback ->
+                service.takeScreenshot(Display.DEFAULT_DISPLAY, executor, callback)
+            }
+            val bitmap = result.toShot(service.displayBounds()).bitmap
+            if (bitmap.isProtected()) {
+                bitmap.recycle()
+                null
+            } else {
+                bitmap
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     /** Scrolls the app under the lens; the caller re-reads the tree afterwards. */
     fun scroll(forward: Boolean): Boolean {
         val window = activeWindow() ?: return false

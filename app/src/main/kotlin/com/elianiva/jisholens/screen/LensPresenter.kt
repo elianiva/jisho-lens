@@ -83,6 +83,8 @@ class LensPresenter(
     private val notes: NotesRepository,
     private val reader: LensNodeReader,
     private val onDismiss: () -> Unit,
+    /** A frozen lens shows a screenshot, so the page underneath no longer drives it. */
+    private val frozen: Boolean = false,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val _state = MutableStateFlow(LensUiState(canReadImage = reader.canReadImages))
@@ -140,6 +142,7 @@ class LensPresenter(
 
     /** A window change: re-read the tree when no entry is open, so highlights follow the page. */
     fun refresh() {
+        if (frozen) return
         val current = _state.value
         if (current.scanning || current.expanded || current.selectedLine >= 0) return
         read(forceImage = false, keepLines = true)
@@ -147,12 +150,13 @@ class LensPresenter(
 
     /** The app under the lens changed: the old selection belongs to another window. */
     fun onWindowChanged() {
+        if (frozen) return
         clearSelection()
         refresh()
     }
 
     fun scroll(forward: Boolean) {
-        if (_state.value.expanded) return
+        if (frozen || _state.value.expanded) return
         touch()
         scope.launch {
             if (reader.scroll(forward)) {

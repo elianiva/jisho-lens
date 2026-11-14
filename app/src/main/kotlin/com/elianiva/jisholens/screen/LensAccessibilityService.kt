@@ -8,11 +8,19 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.res.Configuration
+import android.os.Build
 import android.service.quicksettings.TileService
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityManager
 import androidx.core.content.ContextCompat
 import com.elianiva.jisholens.JishoLensApp
+import com.elianiva.jisholens.MainActivity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * The live screen lens.
@@ -25,6 +33,8 @@ import com.elianiva.jisholens.JishoLensApp
  */
 class LensAccessibilityService : AccessibilityService() {
     private var overlay: LensOverlayHost? = null
+    private var opening = false
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var screenReceiverRegistered = false
 
     private val screenOff = object : BroadcastReceiver() {
@@ -76,6 +86,7 @@ class LensAccessibilityService : AccessibilityService() {
 
     override fun onDestroy() {
         hideLens()
+        scope.cancel()
         if (screenReceiverRegistered) {
             runCatching { unregisterReceiver(screenOff) }
             screenReceiverRegistered = false
@@ -84,13 +95,53 @@ class LensAccessibilityService : AccessibilityService() {
         super.onDestroy()
     }
 
+    /**
+     * Freezes the screen as it is now and opens the lens over it. The screenshot is taken
+     * before the overlay exists, so it holds only the page. Where the device cannot take
+     * one, the lens opens live over the page instead.
+     */
     fun showLens() {
-        if (overlay?.isShowing == true) return
-        overlay = null
-        val host = LensOverlayHost(this, (application as JishoLensApp).container)
-        if (host.show()) {
-            overlay = host
-            requestTileUpdate(this)
+        if (overlay?.isShowing == true || opening) return
+        opening = true
+        scope.launch {
+            try {
+                overlay = null
+                val host = LensOverlayHost(this@LensAccessibilityService, (application as JishoLensApp).container)
+                val page = host.freeze()
+                if (host.show(page)) {
+                    overlay = host
+                    requestTileUpdate(this@LensAccessibilityService)
+                } else {
+                    page?.recycle()
+                }
+            } finally {
+                opening = false
+            }
+        }
+    }
+
+    /**
+     * The Quick Settings tile's way in. It closes the shade with an accessibility action
+     * instead of opening an activity, so no Jisho Lens screen flashes up between the page
+     * and the lens. The shade needs a moment to leave before the page is captured.
+     */
+    fun openFromTile() {
+        scope.launch {
+            val container = (application as JishoLensApp).container
+            container.refreshDictionaries()
+            if (container.dictionaries.value.none { it.enabled }) {
+                startActivity(Intent(this@LensAccessibilityService, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                return@launch
+            }
+            if (overlay?.isShowing == true) {
+                hideLens()
+                return@launch
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                performGlobalAction(GLOBAL_ACTION_DISMISS_NOTIFICATION_SHADE)
+            }
+            delay(SHADE_COLLAPSE_MILLIS)
+            showLens()
         }
     }
 
@@ -114,6 +165,9 @@ class LensAccessibilityService : AccessibilityService() {
             private set
 
         val isShowing: Boolean get() = instance?.overlay?.isShowing == true
+
+        /** Long enough for the shade to finish leaving before the page is captured. */
+        private const val SHADE_COLLAPSE_MILLIS = 350L
 
         /** True after the user has turned the service on in Settings. */
         fun isEnabled(context: Context): Boolean {

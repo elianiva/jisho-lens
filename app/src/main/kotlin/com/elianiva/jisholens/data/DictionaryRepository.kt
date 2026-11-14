@@ -4,6 +4,7 @@ import com.elianiva.jisholens.dictionary.DictionaryLookup
 import com.elianiva.jisholens.dictionary.DictionaryRecord
 import com.elianiva.jisholens.dictionary.DictionaryStore
 import com.elianiva.jisholens.dictionary.Furigana
+import com.elianiva.jisholens.dictionary.FtsReindexer
 import com.elianiva.jisholens.dictionary.ImportSummary
 import com.elianiva.jisholens.dictionary.ScanMatch
 import com.elianiva.jisholens.dictionary.TermResult
@@ -95,6 +96,9 @@ class DictionaryRepository(private val database: DictionaryDatabase) {
             ).import(archive, alias)
         }
     }
+
+    /** Rebuilds the search index from the stored glossaries; nothing is downloaded. Returns the terms indexed. */
+    suspend fun reindex(id: Long): Int = onDb { FtsReindexer(database.sqlite).reindex(id) }
 
     suspend fun media(dictionaryId: Long, path: String): ByteArray? = onDb {
         store.media(dictionaryId, path)?.data
