@@ -40,14 +40,14 @@ The native app does not read the 1.x database. Import a Yomitan `.zip` dictionar
 - Material 3 Expressive design with Google Sans Flex. Light, dark, and system themes, with dynamic color on Android 12 and later and a blue fallback.
 - Share an image to the app, or select text in another app and use the Look up action.
 - No storage permission. The app uses the system file picker and a foreground service for imports.
-- Scanning, OCR, and lookup run on the device. The network is used for a dictionary download that you start, and once for the Japanese text model that Google Play services installs.
+- Scanning, OCR, and lookup run on the device. The network is used only for a dictionary download that you start. The Japanese text model ships in the APK.
 - Live reading reads text and window bounds from the active app on the device. The OCR fallback keeps one bitmap in memory and recycles it. Nothing is written to disk or sent. The lens closes when you close it, when the screen turns off, or after ten idle minutes.
 
 ## Components
 
 A component is a part of the app that lives outside the APK. Each one has a kind:
 
-- `Engine` runs a feature. The Japanese text model is the first component, and Google Play services installs it.
+- `Engine` runs a feature. No engine is a component today: the Japanese text model ships in the APK.
 - `Entries` holds dictionary data that lookups read from.
 
 `ComponentManager` checks every component when the app opens and downloads what is missing in the background. A pill above the navigation bar shows each download with its percentage, offers Retry when one fails, and disappears once the parts are ready. Dictionaries keep their own flow, because the reader chooses which ones to add.
@@ -57,7 +57,7 @@ A component is a part of the app that lives outside the APK. Each one has a kind
 - The native app is a release candidate. It has no final stable release yet.
 - Segmentation loads the IPADIC model once per process (about 36 MB of heap) and adds about 13 MB to the APK.
 - Vertical manga text and stylized fonts are harder for ML Kit. Crop and zoom the image when recognition is poor.
-- The text recognition model comes from Google Play services, so the image fallback needs Play services on the device. The model arrives with the install or when the app first opens.
+- The text recognition model ships in the APK, so the image fallback needs no Play services. It adds about 20 MB to each per-ABI APK.
 - Live reading uses Android's `AccessibilityService`. It only sees text an app exposes in its accessibility tree. Manga, images, and custom-drawn text use an in-memory screenshot and ML Kit on Android 11 and later, and a protected window refuses the screenshot. While the lens is open it takes touches. Swipe to scroll the app, or close the lens to interact with the page.
 - Google Play requires a Permissions Declaration for the `AccessibilityService` API. The app declares `isAccessibilityTool=false` because it is a language-learning aid, not a screen reader for people with disabilities, and shows the disclosure before the system grant. A Play release needs that declaration.
 - The Anki action uses AnkiDroid's `ACTION_SEND` contract, not its LGPL-3.0 library, so the note is opened in AnkiDroid for you to confirm instead of being written silently. Without AnkiDroid the note goes to the system share sheet.
@@ -80,7 +80,7 @@ The disclosure is in `app/src/main/kotlin/com/elianiva/jisholens/ui/screens/Lens
 - DataStore for settings and per-word notes
 - `androidx.sqlite` bundled SQLite behind the `:dictionary` interface
 - FTS4 with `unicode61` for search
-- AccessibilityService with a `TYPE_ACCESSIBILITY_OVERLAY` Compose window, and ML Kit Japanese text recognition for images, with the model installed by Google Play services
+- AccessibilityService with a `TYPE_ACCESSIBILITY_OVERLAY` Compose window, and ML Kit Japanese text recognition for images, with the bundled model
 - Android `TextToSpeech`, using the installed offline Japanese voice
 - Kuromoji 0.9.0 with the IPADIC model for segmentation (Apache-2.0)
 - Gradle 9.9.1 and AGP 9.5.1
@@ -127,7 +127,7 @@ The images land in `app/build/screenshots`: `previews/` for each preview and `ap
 
 Every push to `master` and every pull request runs the checks in `.github/workflows/ci.yml`. Each check is a job of its own, so lint, the app, dictionary, and CLI tests, the screenshot tests, the APK builds, and the workflow lint all run at the same time. Branch protection can require the single `All checks` job.
 
-Pushing a tag such as `v1.2.3`, or `v2.0.0-rc.1` for a release candidate, runs `.github/workflows/release.yml`. It waits for the CI run on the tagged commit, builds the signed stable release with the tag as `versionName`, checks that the APK reports that version, and publishes `jisho-lens-1.2.3.apk`, `jisho-lens-1.2.3.aab`, and `SHA256SUMS.txt` as a GitHub release. A release candidate is published as a GitHub pre-release. The release notes are the `## [version]` section of `CHANGELOG.md`, or GitHub's generated notes when there is none. The version code is `(major * 10000 + minor * 100 + patch) * 100` plus the release candidate number, or 99 for a final release, so `v1.2.3` has code `1020399` and `v1.2.3-rc.1` has code `1020301`.
+Pushing a tag such as `v1.2.3`, or `v2.0.0-rc.1` for a release candidate, runs `.github/workflows/release.yml`. It waits for the CI run on the tagged commit, builds the signed stable release with the tag as `versionName`, checks that the APK reports that version, and publishes one APK per ABI (`jisho-lens-1.2.3-arm64-v8a.apk`, `-armeabi-v7a`, `-x86_64`), a `-universal` APK, `jisho-lens-1.2.3.aab`, and `SHA256SUMS.txt` as a GitHub release. A release candidate is published as a GitHub pre-release. The release notes are the `## [version]` section of `CHANGELOG.md`, or GitHub's generated notes when there is none. The version code is `(major * 10000 + minor * 100 + patch) * 100` plus the release candidate number, or 99 for a final release, so `v1.2.3` has code `1020399` and `v1.2.3-rc.1` has code `1020301`.
 
 Signing reads four repository secrets, and the release stops before building if one is missing:
 

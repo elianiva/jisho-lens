@@ -17,7 +17,7 @@ class AppContainer(context: Context) {
     val notes = NotesRepository(appContext)
     val importController = ImportController()
     val ocr = OcrEngine()
-    val components = ComponentManager(listOf(OcrModelComponent(appContext)), scope)
+    val components = ComponentManager(emptyList(), scope)
 
     val dictionaries = MutableStateFlow<List<DictionaryRecord>>(emptyList())
 
