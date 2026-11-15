@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.0.0-rc.6] - 2026-11-15
+
+### Changed
+
+- open the lens faster from the Quick Settings tile: the shade closes while the dictionary list loads, the page is captured as soon as the shade has left, and Back is sent sooner on skins that ignore the close action
+- let words be tapped while recognition is still looking for more text. A small spinner in the top bar shows it is working, and the Reading card no longer covers the page
+
+### Fixed
+
+- keep the open entry on its own line when recognition adds lines above it, instead of jumping to another line
+
 ## [2.0.0-rc.5] - 2026-11-15
 
 ### Fixed
