@@ -18,6 +18,7 @@ import com.elianiva.jisholens.MainActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -123,17 +124,19 @@ class LensAccessibilityService : AccessibilityService() {
     /**
      * The Quick Settings tile's way in. It closes the shade with an accessibility action
      * instead of opening an activity, so no Jisho Lens screen flashes up between the page
-     * and the lens. The shade needs a moment to leave before the page is captured.
+     * and the lens. The page is captured as soon as the shade has left.
      */
     fun openFromTile() {
         scope.launch {
             val container = (application as JishoLensApp).container
-            container.refreshDictionaries()
             if (overlay?.isShowing == true) {
                 hideLens()
                 return@launch
             }
+            // The shade closes while the dictionary list loads, so neither waits for the other.
+            val dictionaries = async { container.refreshDictionaries() }
             closeShade()
+            dictionaries.await()
             if (container.dictionaries.value.none { it.enabled }) {
                 startActivity(Intent(this@LensAccessibilityService, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 return@launch
@@ -194,9 +197,9 @@ class LensAccessibilityService : AccessibilityService() {
         val isShowing: Boolean get() = instance?.overlay?.isShowing == true
 
         /** Long enough for the shade to finish leaving before the page is captured. */
-        private const val SHADE_COLLAPSE_MILLIS = 200L
-        private const val SHADE_POLL_MILLIS = 50L
-        private const val SHADE_RETRY_MILLIS = 900L
+        private const val SHADE_COLLAPSE_MILLIS = 60L
+        private const val SHADE_POLL_MILLIS = 25L
+        private const val SHADE_RETRY_MILLIS = 450L
         private const val SHADE_TIMEOUT_MILLIS = 2_000L
 
         /**

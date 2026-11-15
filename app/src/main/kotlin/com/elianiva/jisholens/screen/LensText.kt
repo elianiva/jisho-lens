@@ -90,6 +90,12 @@ private fun LensLine.duplicates(ocr: LensLine): Boolean {
     return rect.width().toLong() * rect.height() <= ocrArea * 3
 }
 
+/** True when [other] is this same line of text, allowing a few pixels of drift between reads. */
+internal fun LensLine.sameAs(other: LensLine): Boolean =
+    text == other.text &&
+        abs(rect.centerX() - other.rect.centerX()) <= 8 &&
+        abs(rect.centerY() - other.rect.centerY()) <= 8
+
 /** The line under ([x], [y]), or the closest line within one line height. */
 internal fun lensLineAt(lines: List<LensLine>, x: Float, y: Float): Int {
     lines.forEachIndexed { index, line ->

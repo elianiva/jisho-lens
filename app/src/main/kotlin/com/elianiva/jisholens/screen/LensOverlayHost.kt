@@ -271,7 +271,7 @@ class LensOverlayHost(
     private companion object {
         const val REFRESH_DELAY_MILLIS = 350L
         const val HIDE_FOR_SCREENSHOT_MILLIS = 120L
-        const val START_DELAY_MILLIS = 150L
+        const val START_DELAY_MILLIS = 50L
         const val GESTURE_NAVIGATION = 2
     }
 }

@@ -131,4 +131,13 @@ class LensTextTest {
         val merged = mergeOcrGaps(listOf(page), listOf(caption))
         assertEquals(2, merged.size)
     }
+
+    @Test
+    fun `a line is the same line after others are added above it`() {
+        val before = LensLine("日本語", Rect(40, 700, 300, 760))
+        val after = LensLine("日本語", Rect(42, 702, 301, 758))
+        val other = LensLine("日本語", Rect(40, 1200, 300, 1260))
+        assertTrue(before.sameAs(after))
+        assertTrue(!before.sameAs(other))
+    }
 }

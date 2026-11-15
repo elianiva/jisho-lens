@@ -195,7 +195,8 @@ fun LensOverlayContent(
         LensTopBar(
             insets = insets,
             canReadImage = state.canReadImage,
-            busy = state.scanning,
+            busy = state.scanning || state.recognizing,
+            recognizing = state.recognizing,
             study = state.study,
             onToggleStudy = onToggleStudy,
             onReadImage = onReadImage,
@@ -401,6 +402,7 @@ private fun LensTopBar(
     insets: WindowInsets,
     canReadImage: Boolean,
     busy: Boolean,
+    recognizing: Boolean,
     study: Boolean,
     onToggleStudy: () -> Unit,
     onReadImage: () -> Unit,
@@ -427,7 +429,15 @@ private fun LensTopBar(
         FilledTonalIconButton(onClick = onClose, colors = colors) {
             Icon(Icons.Rounded.Close, contentDescription = "Close the lens")
         }
-        Spacer(Modifier.weight(1f))
+        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+            if (recognizing) {
+                ContainedLoadingIndicator(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .semantics { contentDescription = "Looking for more text" },
+                )
+            }
+        }
         FilledTonalIconButton(onClick = onToggleStudy, colors = studyColors) {
             Icon(
                 imageVector = Icons.Rounded.Translate,

@@ -40,6 +40,8 @@ enum class LensMessage {
 data class LensUiState(
     val lines: List<LensLine> = emptyList(),
     val scanning: Boolean = true,
+    /** The tree's lines are on screen and recognition is still looking for more. Taps work. */
+    val recognizing: Boolean = false,
     val message: LensMessage? = null,
     val selectedLine: Int = -1,
     val candidates: List<ScanWord> = emptyList(),
@@ -144,7 +146,7 @@ class LensPresenter(
     fun refresh() {
         if (frozen) return
         val current = _state.value
-        if (current.scanning || current.expanded || current.selectedLine >= 0) return
+        if (current.scanning || current.recognizing || current.expanded || current.selectedLine >= 0) return
         read(forceImage = false, keepLines = true)
     }
 
@@ -251,6 +253,7 @@ class LensPresenter(
         _state.update {
             it.copy(
                 scanning = true,
+                recognizing = false,
                 message = null,
                 selectedLine = -1,
                 candidates = emptyList(),
@@ -264,11 +267,19 @@ class LensPresenter(
             when (val reading = reader.read(
                 forceImage,
                 fillGaps = !keepLines,
-                onTreeLines = { early -> _state.update { it.copy(lines = early, fromImage = false) } },
+                onTreeLines = { early -> _state.update { it.copy(lines = early, scanning = false, recognizing = true, fromImage = false) } },
             )) {
                 is LensReading.Lines -> _state.update {
+                    // Recognition can add lines above the selected one, so keep the selection
+                    // on the same line instead of the same position in the list.
+                    val moved = it.line?.let { chosen -> reading.lines.indexOfFirst { line -> line.sameAs(chosen) } } ?: -1
                     it.copy(
                         lines = reading.lines,
+                        selectedLine = moved,
+                        candidates = if (moved >= 0) it.candidates else emptyList(),
+                        selectedCandidate = if (moved >= 0) it.selectedCandidate else 0,
+                        lookingUp = if (moved >= 0) it.lookingUp else false,
+                        recognizing = false,
                         scanning = false,
                         message = null,
                         fromImage = reading.fromImage,
@@ -279,18 +290,19 @@ class LensPresenter(
                     it.copy(
                         lines = emptyList(),
                         scanning = false,
+                        recognizing = false,
                         lookingUp = false,
                         message = LensMessage.NoText,
                     )
                 }
                 LensReading.Protected -> _state.update {
-                    it.copy(lines = emptyList(), scanning = false, lookingUp = false, message = LensMessage.Protected)
+                    it.copy(lines = emptyList(), scanning = false, recognizing = false, lookingUp = false, message = LensMessage.Protected)
                 }
                 LensReading.OcrUnavailable -> _state.update {
-                    it.copy(lines = emptyList(), scanning = false, lookingUp = false, message = LensMessage.OcrUnavailable)
+                    it.copy(lines = emptyList(), scanning = false, recognizing = false, lookingUp = false, message = LensMessage.OcrUnavailable)
                 }
                 LensReading.Failed -> _state.update {
-                    it.copy(lines = emptyList(), scanning = false, lookingUp = false, message = LensMessage.Failed)
+                    it.copy(lines = emptyList(), scanning = false, recognizing = false, lookingUp = false, message = LensMessage.Failed)
                 }
             }
             if (_state.value.study) scanStudyLines()
