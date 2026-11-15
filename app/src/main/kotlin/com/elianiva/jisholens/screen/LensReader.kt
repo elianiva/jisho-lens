@@ -58,7 +58,25 @@ class LensNodeReader(
             service.serviceInfo.capabilities and AccessibilityServiceInfo.CAPABILITY_CAN_TAKE_SCREENSHOT != 0
         }.getOrDefault(false)
 
-    suspend fun read(forceImage: Boolean): LensReading {
+    /**
+     * The screenshot the open lens is frozen on. Recognition reads it instead of taking a
+     * second capture, which would flicker the lens on Android 13 and older and could show
+     * a page that has moved since the freeze. Set by the overlay host; the host owns it.
+     */
+    @Volatile
+    var frozenPage: Bitmap? = null
+
+    /**
+     * Reads the page. [fillGaps] adds text the accessibility tree does not expose: after
+     * the tree is read, the screenshot is recognized too and any line that lands where
+     * the tree found nothing is added. Apps often draw part of a page as one merged or
+     * custom-rendered node, so the tree alone misses lines that are plainly on screen.
+     */
+    suspend fun read(
+        forceImage: Boolean,
+        fillGaps: Boolean = true,
+        onTreeLines: (List<LensLine>) -> Unit = {},
+    ): LensReading {
         val window = activeWindow()
         val activeRoot = runCatching { window?.root ?: service.rootInActiveWindow }.getOrNull()
         if (activeRoot == null || activeRoot.packageName?.toString() == service.packageName) {
@@ -66,28 +84,64 @@ class LensNodeReader(
             // screenshot our own overlay and call it the page.
             return LensReading.NoText
         }
+        var treeLines = emptyList<LensLine>()
         if (!forceImage) {
             val nodes = runCatching { readNodes(window) }.getOrDefault(emptyList())
-            val lines = buildLensLines(nodes)
-            if (lines.isNotEmpty()) return LensReading.Lines(lines, fromImage = false)
+            treeLines = buildLensLines(nodes)
+            if (treeLines.isNotEmpty() && !(fillGaps && canReadImages)) {
+                return LensReading.Lines(treeLines, fromImage = false)
+            }
+            // Show what the tree gave now; recognition can take a second.
+            if (treeLines.isNotEmpty()) onTreeLines(treeLines)
         }
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-            return if (forceImage) LensReading.OcrUnavailable else LensReading.NoText
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R || !canReadImages) {
+            return when {
+                treeLines.isNotEmpty() -> LensReading.Lines(treeLines, fromImage = false)
+                forceImage -> LensReading.OcrUnavailable
+                else -> LensReading.NoText
+            }
         }
-        if (!canReadImages) {
-            return if (forceImage) LensReading.OcrUnavailable else LensReading.NoText
+        return when (val image = readImage(window)) {
+            is ImageResult.Lines -> if (treeLines.isEmpty()) {
+                if (image.lines.isEmpty()) LensReading.NoText else LensReading.Lines(image.lines, fromImage = true)
+            } else {
+                LensReading.Lines(mergeOcrGaps(treeLines, image.lines), fromImage = false)
+            }
+            is ImageResult.Failed -> if (treeLines.isNotEmpty()) {
+                LensReading.Lines(treeLines, fromImage = false)
+            } else {
+                image.reading
+            }
         }
-        val shot = try {
+    }
+
+    private sealed interface ImageResult {
+        data class Lines(val lines: List<LensLine>) : ImageResult
+        data class Failed(val reading: LensReading) : ImageResult
+    }
+
+    @RequiresApi(Build.VERSION_CODES.R)
+    private suspend fun readImage(window: AccessibilityWindowInfo?): ImageResult {
+        val frozen = frozenPage?.takeUnless { it.isRecycled }
+        val shot = if (frozen != null) {
+            val bounds = service.displayBounds()
+            LensShot(
+                bitmap = frozen,
+                origin = Point(bounds.left, bounds.top),
+                scaleX = frozen.width.toFloat() / bounds.width().coerceAtLeast(1),
+                scaleY = frozen.height.toFloat() / bounds.height().coerceAtLeast(1),
+            )
+        } else try {
             screenshot(window)
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: SecureScreenshotException) {
-            return LensReading.Protected
+            return ImageResult.Failed(LensReading.Protected)
         } catch (_: Exception) {
-            return LensReading.Failed
+            return ImageResult.Failed(LensReading.Failed)
         }
         return try {
-            if (shot.bitmap.isProtected()) return LensReading.Protected
+            if (shot.bitmap.isProtected()) return ImageResult.Failed(LensReading.Protected)
             val boxes = try {
                 ocr.recognize(shot.bitmap)
             } catch (cancelled: CancellationException) {
@@ -95,16 +149,16 @@ class LensNodeReader(
             } catch (unavailable: MlKitException) {
                 // The model is installed by Play services and may still be arriving.
                 if (unavailable.errorCode == MlKitException.UNAVAILABLE) {
-                    return LensReading.OcrUnavailable
+                    return ImageResult.Failed(LensReading.OcrUnavailable)
                 }
                 emptyList()
             } catch (_: Exception) {
                 emptyList()
             }
-            val lines = boxes.mapNotNull { it.toLensLine(shot) }
-            if (lines.isEmpty()) LensReading.NoText else LensReading.Lines(lines, fromImage = true)
+            ImageResult.Lines(boxes.mapNotNull { it.toLensLine(shot) })
         } finally {
-            shot.bitmap.recycle()
+            // The host recycles the frozen page itself when the lens closes.
+            if (frozen == null) shot.bitmap.recycle()
         }
     }
 
@@ -191,7 +245,9 @@ class LensNodeReader(
     ) {
         if (node == null || depth > MAX_DEPTH || out.size >= MAX_NODES) return
         if (!node.isPassword && node.isVisibleToUser) {
-            val text = node.text?.toString().orEmpty()
+            // Many apps put the readable text in the description, not in the text.
+            val text = node.text?.toString()?.takeIf { it.isNotBlank() }
+                ?: node.contentDescription?.toString().orEmpty()
             if (text.isNotBlank() && text.any { FtsText.isJapanese(it.code) }) {
                 val bounds = Rect().also { node.getBoundsInScreen(it) }
                 if (!bounds.isEmpty && bounds.width() > 0 && bounds.height() > 0) {

@@ -88,6 +88,7 @@ class LensOverlayHost(
     fun show(frozenPage: Bitmap? = null): Boolean {
         if (view != null) return true
         frozen = frozenPage
+        reader.frozenPage = frozenPage
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
         val lens = LensPresenter(
             repository = container.repository,
@@ -151,6 +152,7 @@ class LensOverlayHost(
             windowManager.addView(compose, windowParams())
         }.isSuccess
         if (!added) {
+            reader.frozenPage = null
             frozen?.recycle()
             frozen = null
             lens.close()
@@ -178,6 +180,7 @@ class LensOverlayHost(
         handler.removeCallbacks(start)
         presenter?.close()
         presenter = null
+        reader.frozenPage = null
         speaker?.close()
         speaker = null
         runCatching { windowManager.removeView(compose) }

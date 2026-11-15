@@ -1,7 +1,6 @@
 package com.elianiva.jisholens.screen
 
 import android.accessibilityservice.AccessibilityService
-import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
@@ -9,9 +8,10 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.res.Configuration
 import android.os.Build
+import android.provider.Settings
 import android.service.quicksettings.TileService
 import android.view.accessibility.AccessibilityEvent
-import android.view.accessibility.AccessibilityManager
+import android.view.accessibility.AccessibilityWindowInfo
 import androidx.core.content.ContextCompat
 import com.elianiva.jisholens.JishoLensApp
 import com.elianiva.jisholens.MainActivity
@@ -129,20 +129,47 @@ class LensAccessibilityService : AccessibilityService() {
         scope.launch {
             val container = (application as JishoLensApp).container
             container.refreshDictionaries()
-            if (container.dictionaries.value.none { it.enabled }) {
-                startActivity(Intent(this@LensAccessibilityService, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                return@launch
-            }
             if (overlay?.isShowing == true) {
                 hideLens()
                 return@launch
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                performGlobalAction(GLOBAL_ACTION_DISMISS_NOTIFICATION_SHADE)
+            closeShade()
+            if (container.dictionaries.value.none { it.enabled }) {
+                startActivity(Intent(this@LensAccessibilityService, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                return@launch
             }
-            delay(SHADE_COLLAPSE_MILLIS)
             showLens()
         }
+    }
+
+    /**
+     * Closes the shade or control center and waits until it has left. The shade owns the
+     * active window while it is open, so reading before it goes would read SystemUI.
+     * Some skins ignore the dismiss action; Back closes those.
+     */
+    private suspend fun closeShade() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            performGlobalAction(GLOBAL_ACTION_DISMISS_NOTIFICATION_SHADE)
+        }
+        var elapsed = 0L
+        var retried = false
+        while (elapsed < SHADE_TIMEOUT_MILLIS && shadeIsActive()) {
+            delay(SHADE_POLL_MILLIS)
+            elapsed += SHADE_POLL_MILLIS
+            if (!retried && elapsed >= SHADE_RETRY_MILLIS) {
+                retried = true
+                performGlobalAction(GLOBAL_ACTION_BACK)
+            }
+        }
+        delay(SHADE_COLLAPSE_MILLIS)
+    }
+
+    /** True while a system window such as the shade or control center holds focus. */
+    private fun shadeIsActive(): Boolean {
+        val active = runCatching { windows.firstOrNull { it.isActive } }.getOrNull() ?: return false
+        if (active.type == AccessibilityWindowInfo.TYPE_APPLICATION) return false
+        val pkg = runCatching { active.root?.packageName?.toString() }.getOrNull()
+        return pkg == null || pkg.contains("systemui", ignoreCase = true)
     }
 
     internal fun onOverlayHidden(host: LensOverlayHost) {
@@ -167,18 +194,21 @@ class LensAccessibilityService : AccessibilityService() {
         val isShowing: Boolean get() = instance?.overlay?.isShowing == true
 
         /** Long enough for the shade to finish leaving before the page is captured. */
-        private const val SHADE_COLLAPSE_MILLIS = 350L
+        private const val SHADE_COLLAPSE_MILLIS = 200L
+        private const val SHADE_POLL_MILLIS = 50L
+        private const val SHADE_RETRY_MILLIS = 900L
+        private const val SHADE_TIMEOUT_MILLIS = 2_000L
 
-        /** True after the user has turned the service on in Settings. */
+        /**
+         * True after the user has turned the service on in Settings. This reads the stored
+         * setting, not the list of bound services: after an update the system rebinds the
+         * service a moment late, and the bound list would call it off.
+         */
         fun isEnabled(context: Context): Boolean {
-            val manager = context.getSystemService(AccessibilityManager::class.java) ?: return false
             val expected = ComponentName(context, LensAccessibilityService::class.java)
-            return manager.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
-                .any { info ->
-                    val serviceInfo = info.resolveInfo?.serviceInfo ?: return@any false
-                    serviceInfo.packageName == expected.packageName &&
-                        serviceInfo.name.orEmpty().endsWith(expected.className.substringAfterLast('.'))
-                }
+            val stored = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+            if (stored.isNullOrEmpty()) return false
+            return stored.split(':').any { ComponentName.unflattenFromString(it) == expected }
         }
 
         fun requestTileUpdate(context: Context) {

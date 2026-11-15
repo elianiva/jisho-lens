@@ -85,7 +85,7 @@ fun LensSetupScreen(
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("What the service can see", style = MaterialTheme.typography.titleSmallEmphasized)
                     Text(
-                        "It can read the text and window bounds of the app in front, and take a screenshot only when you ask it to read an image or when that app exposes no text. It does not read passwords. Nothing leaves the device.",
+                        "It can read the text and window bounds of the app in front, and take a screenshot of that app each time you open the lens, to read text the app does not expose. It does not read passwords. Nothing leaves the device.",
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     Text(
@@ -103,6 +103,11 @@ fun LensSetupScreen(
             } else {
                 Text(
                     "In Accessibility, open Jisho Lens and turn on Live reading.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    "If the switch is greyed out, open Settings > Apps > Jisho Lens, tap the menu, and choose Allow restricted settings. Android blocks apps installed outside the Play Store until you do.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

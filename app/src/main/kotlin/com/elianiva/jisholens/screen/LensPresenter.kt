@@ -261,7 +261,11 @@ class LensPresenter(
             )
         }
         readJob = scope.launch {
-            when (val reading = reader.read(forceImage)) {
+            when (val reading = reader.read(
+                forceImage,
+                fillGaps = !keepLines,
+                onTreeLines = { early -> _state.update { it.copy(lines = early, fromImage = false) } },
+            )) {
                 is LensReading.Lines -> _state.update {
                     it.copy(
                         lines = reading.lines,

@@ -62,8 +62,8 @@ class LensTriggerActivity : ComponentActivity() {
         /** Long enough for the shade to finish collapsing before the page is read. */
         private const val SHADE_COLLAPSE_MILLIS = 250L
 
-        /** A few system bind round-trips after process death, no longer. */
-        private const val CONNECT_TIMEOUT_MILLIS = 1_200L
+        /** The system rebinds the service late after an update or process death. */
+        private const val CONNECT_TIMEOUT_MILLIS = 4_000L
         private const val POLL_MILLIS = 50L
 
         fun intent(context: Context): Intent = Intent(context, LensTriggerActivity::class.java)

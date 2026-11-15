@@ -114,4 +114,21 @@ class LensTextTest {
         assertNotEquals(space, line.nearestWordOffset(space))
         assertTrue(!line.text[line.nearestWordOffset(space)].isWhitespace())
     }
+
+    @Test
+    fun `ocr keeps lines the tree missed and drops the ones it has`() {
+        val tree = LensLine("これなあ", Rect(0, 100, 400, 160))
+        val same = LensLine("これなあ", Rect(5, 105, 395, 155))
+        val missed = LensLine("コラコン", Rect(0, 300, 300, 360))
+        val merged = mergeOcrGaps(listOf(tree), listOf(same, missed))
+        assertEquals(listOf("これなあ", "コラコン"), merged.map { it.text })
+    }
+
+    @Test
+    fun `a huge tree box does not hide ocr lines drawn over it`() {
+        val page = LensLine("あ", Rect(0, 0, 1000, 2000))
+        val caption = LensLine("学ぶコストは下がった", Rect(40, 700, 700, 760))
+        val merged = mergeOcrGaps(listOf(page), listOf(caption))
+        assertEquals(2, merged.size)
+    }
 }

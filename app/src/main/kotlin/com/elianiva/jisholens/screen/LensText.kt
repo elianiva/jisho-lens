@@ -68,6 +68,28 @@ internal fun buildLensLines(nodes: List<LensNode>): List<LensLine> {
         .distinctBy { "${it.rect}|${it.text}" }
 }
 
+/**
+ * Adds the OCR lines the tree did not have. An OCR line is a duplicate when it sits
+ * mostly inside a tree line and either shares its text or the tree box is no bigger
+ * than a few lines of it. A tree node that merely has a huge box does not hide the
+ * OCR lines drawn over it.
+ */
+internal fun mergeOcrGaps(tree: List<LensLine>, ocr: List<LensLine>): List<LensLine> {
+    val gaps = ocr.filterNot { line -> tree.any { it.duplicates(line) } }
+    return (tree + gaps).sortedWith(compareBy({ it.rect.top }, { it.rect.left }))
+}
+
+private fun LensLine.duplicates(ocr: LensLine): Boolean {
+    val overlap = Rect(ocr.rect)
+    if (!overlap.intersect(rect)) return false
+    val ocrArea = ocr.rect.width().toLong() * ocr.rect.height()
+    if (ocrArea <= 0 || overlap.width().toLong() * overlap.height() * 2 < ocrArea) return false
+    val mine = text.filterNot { it.isWhitespace() }
+    val theirs = ocr.text.filterNot { it.isWhitespace() }
+    if (mine.contains(theirs) || theirs.contains(mine)) return true
+    return rect.width().toLong() * rect.height() <= ocrArea * 3
+}
+
 /** The line under ([x], [y]), or the closest line within one line height. */
 internal fun lensLineAt(lines: List<LensLine>, x: Float, y: Float): Int {
     lines.forEachIndexed { index, line ->
