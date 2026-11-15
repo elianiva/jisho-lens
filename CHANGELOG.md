@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.0.0-rc.5] - 2026-11-15
+
+### Fixed
+
+- close the Quick Settings shade before the lens reads the screen, so the lens no longer reads the control center and reports no Japanese text. It waits until the shade has left, and sends Back where a skin ignores the close action
+- recognize text apps do not expose in the accessibility tree, such as the body of a post in X. The lens now also runs OCR on its frozen screenshot and adds the lines the tree missed, and it reads `contentDescription` text
+- stop asking for the accessibility permission after an update. The tile checks the stored setting instead of the list of bound services, which the system fills in late, and the trigger waits longer for the service to bind
+- open the app, not the shade, when no dictionary is enabled
+
+### Changed
+
+- show the words from the accessibility tree at once and add the OCR-only lines when recognition finishes
+- mention in the live reading disclosure that a screenshot is taken each time the lens opens, and explain Allow restricted settings for apps installed outside the Play Store
+
 ## [2.0.0-rc.4] - 2026-11-14
 
 ### Added
